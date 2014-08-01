@@ -1,4 +1,6 @@
 *~
 *.hi
 *.ho
+.cabal-sandbox/
+cabal.sandbox.config
 dist/
