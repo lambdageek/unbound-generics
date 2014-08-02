@@ -10,14 +10,13 @@ module F where
 
 import Unbound.Generics.LocallyNameless
 
-import GHC.Generics (Generic)
+import GHC.Generics
 import Data.Typeable (Typeable)
 
-{-
-import Control.Monad
+import Control.Monad.Identity
 import Control.Monad.Trans.Error
 import Data.List as List
--}
+
 
 -- System F with type and term variables
 
@@ -30,7 +29,6 @@ data Ty = TyVar TyName
    deriving (Show, Generic, Typeable)
 
 data Tm = TmVar TmName
-        -- | Lam Ty (Bind TmName Tm)
         | Lam (Bind (TmName, Embed Ty) Tm)
         | TLam (Bind TyName Tm)
         | App Tm Tm
@@ -38,17 +36,17 @@ data Tm = TmVar TmName
    deriving (Show, Generic, Typeable)
 
 ------------------------------------------------------
-instance Alpha Ty where
-instance Alpha Tm where
+instance Alpha Ty
+instance Alpha Tm
 
+instance Subst Tm Ty
+instance Subst Tm Tm where
+  isvar (TmVar v) = Just (SubstName v)
+  isvar _  = Nothing
 
--- instance Subst Tm Ty where
--- instance Subst Tm Tm where
---  isvar (TmVar x) = Just (SubstName x)
---  isvar _  = Nothing
--- instance Subst Ty Ty where
---  isvar (TyVar x) = Just (SubstName x)
---  isvar _ = Nothing
+instance Subst Ty Ty where
+  isvar (TyVar v) = Just (SubstName v)
+  isvar _ = Nothing
 
 ------------------------------------------------------
 -- Example terms
@@ -84,26 +82,28 @@ bad_polyid2 = TLam (bind c (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
 -----------------------------------------------------------------
 -- Typechecker
 -----------------------------------------------------------------
-{-
 type Delta = [ TyName ]
 type Gamma = [ (TmName, Ty) ]
 
 data Ctx = Ctx { getDelta :: Delta , getGamma :: Gamma }
+           deriving (Show)
+                    
+emptyCtx :: Ctx
 emptyCtx = Ctx { getDelta = [], getGamma = [] }
 
-type M = ErrorT String FreshM
+type M = ErrorT String (FreshMT Identity)
 
 runM :: M a -> a
-runM m = case (runFreshM (runErrorT m)) of
+runM m = case (runIdentity $ runFreshMT (runErrorT m)) of
    Left s  -> error s
-   Right a -> a
+   Right ans -> ans
 
 checkTyVar :: Ctx -> TyName -> M ()
 checkTyVar g v = do
     if List.elem v (getDelta g) then
       return ()
     else
-      throwError "NotFound"
+      throwError $ "NotFound: " ++ show v ++ " in " ++ show g
 
 lookupTmVar :: Ctx -> TmName -> M Ty
 lookupTmVar g v = do
@@ -118,21 +118,21 @@ extendTm :: TmName -> Ty -> Ctx -> Ctx
 extendTm n ty ctx = ctx { getGamma = (n, ty) : (getGamma ctx) }
 
 tcty :: Ctx -> Ty -> M ()
-tcty g  (TyVar x) =
-   checkTyVar g x
-tcty g  (All b) = do
-   (x, ty') <- unbind b
-   tcty (extendTy x g) ty'
+tcty g  (TyVar alpha) =
+   checkTyVar g alpha
+tcty g  (All bnder) = do
+   (alpha, ty') <- unbind bnder
+   tcty (extendTy alpha g) ty'
 tcty g  (Arr t1 t2) = do
    tcty g  t1
    tcty g  t2
 
 ti :: Ctx -> Tm -> M Ty
-ti g (TmVar x) = lookupTmVar g x
+ti g (TmVar v) = lookupTmVar g v
 ti g (Lam bnd) = do
-  ((x, Embed ty1), t) <- unbind bnd
+  ((v, Embed ty1), t) <- unbind bnd
   tcty g ty1
-  ty2 <- ti (extendTm x ty1 g) t
+  ty2 <- ti (extendTm v ty1 g) t
   return (Arr ty1 ty2)
 ti g (App t1 t2) = do
   ty1 <- ti g t1
@@ -142,15 +142,16 @@ ti g (App t1 t2) = do
       return ty21
     _ -> throwError "TypeError"
 ti g (TLam bnd) = do
-  (x, t) <- unbind bnd
-  ty <- ti (extendTy x g) t
-  return (All (bind x ty))
+  (v, t) <- unbind bnd
+  ty <- ti (extendTy v g) t
+  return (All (bind v ty))
 ti g (TApp t ty) = do
   tyt <- ti g t
   case tyt of
-   (All b) -> do
+   (All bnder) -> do
       tcty g  ty
-      (n1, ty1) <- unbind b
+      (n1, ty1) <- unbind bnder
       return $ subst n1 ty ty1
+   _ -> throwError $ "Expected a ForAll in a type application, got " ++ show tyt
 
--}
+

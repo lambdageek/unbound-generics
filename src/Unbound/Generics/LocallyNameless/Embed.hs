@@ -7,9 +7,11 @@
 -- Stability  : experimental
 --
 -- The pattern @'Embed' t@ contains a term @t@.
+{-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Embed where
 
 import Data.Monoid (mempty)
+import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless.Alpha
 
@@ -25,7 +27,7 @@ import Unbound.Generics.LocallyNameless.Alpha
 --   (You may also use the functions 'embed' and 'unembed', which
 --   additionally can construct or destruct any number of enclosing
 --   'Shift's at the same time.)
-newtype Embed t = Embed t deriving Eq
+newtype Embed t = Embed t deriving (Eq, Generic)
 
 instance Show a => Show (Embed a) where
   showsPrec _ (Embed a) = showString "{" . showsPrec 0 a . showString "}"

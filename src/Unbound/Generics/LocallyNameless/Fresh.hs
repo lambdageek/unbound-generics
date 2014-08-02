@@ -12,8 +12,17 @@ module Unbound.Generics.LocallyNameless.Fresh where
 import Control.Applicative (Applicative)
 import Control.Monad (MonadPlus)
 import Control.Monad.Fix (MonadFix)
-import Control.Monad.IO.Class (MonadIO)
 
+import Control.Monad.Trans
+import Control.Monad.Trans.Error
+import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Reader
+import Control.Monad.Trans.State.Lazy as Lazy
+import Control.Monad.Trans.State.Strict as Strict
+import Control.Monad.Trans.Writer.Lazy as Lazy
+import Control.Monad.Trans.Writer.Strict as Strict
+
+import Data.Monoid (Monoid)
 
 import qualified Control.Monad.State as St
 
@@ -48,3 +57,27 @@ instance Monad m => Fresh (FreshMT m) where
     St.put $! n + 1
     return $ (Fn s n)
   fresh nm@(Bn {}) = return nm
+
+instance (Error e, Fresh m) => Fresh (ErrorT e m) where
+  fresh = lift . fresh
+
+instance Fresh m => Fresh (MaybeT m) where
+  fresh = lift . fresh
+
+instance Fresh m => Fresh (ReaderT r m) where
+  fresh = lift . fresh
+
+instance Fresh m => Fresh (Lazy.StateT s m) where
+  fresh = lift . fresh
+
+instance Fresh m => Fresh (Strict.StateT s m) where
+  fresh = lift . fresh
+
+instance (Monoid w, Fresh m) => Fresh (Lazy.WriterT w m) where
+  fresh = lift . fresh
+
+instance (Monoid w, Fresh m) => Fresh (Strict.WriterT w m) where
+  fresh = lift . fresh
+
+instance MonadTrans FreshMT where
+  lift = FreshMT . lift

@@ -25,6 +25,7 @@ library
                        Unbound.Generics.LocallyNameless.Embed
                        Unbound.Generics.LocallyNameless.Operations
                        Unbound.Generics.PermM
+                       Unbound.Generics.LocallyNameless.Subst
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.6 && <5,

@@ -11,16 +11,20 @@
 -- pattern scope over the term.  Use 'Unbound.Generics.LocallyNameless.Operations.bind'
 -- and 'Unbound.Generics.LocallyNameless.Operations.unbind' and 'Unbound.Generics.LocallyNameless.Operations.lunbind'
 -- to work with @'Bind' p t@
+{-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Bind (
   -- * Name binding
   Bind(..)
   ) where
+
+import GHC.Generics (Generic)
 
 import Data.Monoid ((<>))
 
 import Unbound.Generics.LocallyNameless.Alpha
 
 data Bind p t = B p t
+              deriving (Generic)
 
 instance (Show p, Show t) => Show (Bind p t) where
   showsPrec prec (B p t) =
@@ -37,7 +41,7 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
 
   isPat _ = inconsistentDisjointSet
 
-  isTerm _ = False
+  isTerm (B p t) = isConsistentDisjointSet (isPat p) && isTerm t
 
   close ctx b (B p t) =
     B (close (patternCtx ctx) b p) (close (incrLevelCtx ctx) b t)

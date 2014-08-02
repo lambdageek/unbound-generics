@@ -7,6 +7,7 @@
 --
 -- Names stand for values.  They may be bound or free.
 {-# LANGUAGE DeriveDataTypeable
+             , DeriveGeneric
              , ExistentialQuantification
              , FlexibleContexts
              , GADTs #-}
@@ -23,6 +24,7 @@ module Unbound.Generics.LocallyNameless.Name
        ) where
 
 import Data.Typeable (Typeable(..), gcast, typeOf)
+import GHC.Generics (Generic)
 
 -- | An abstract datatype of names @Name a@ that stand for terms of
 -- type @a@.  The type @a@ is used as a tag to distinguish these names
@@ -41,7 +43,7 @@ import Data.Typeable (Typeable(..), gcast, typeOf)
 -- 
 data Name a = Fn String !Integer    -- free names
             | Bn !Integer !Integer  -- bound names / binding level + pattern index
-            deriving (Eq, Ord, Typeable)
+            deriving (Eq, Ord, Typeable, Generic)
 
 -- | Returns 'True' iff the given @Name a@ is free.
 isFreeName :: Name a -> Bool
