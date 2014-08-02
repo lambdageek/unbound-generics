@@ -11,11 +11,18 @@
 module Unbound.Generics.LocallyNameless.Alpha (
   -- * Name-aware opertions
   Alpha(..)
+  -- * Binder variables
+  , DisjointSet(..)
+  , inconsistentDisjointSet
+  , isConsistentDisjointSet
   -- * Implementation details
   , AlphaCtx
   ) where
 
 import Data.Function (on)
+import Data.Foldable (Foldable(..))
+import Data.List (intersect)
+import Data.Monoid (Monoid(..), (<>))
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
@@ -24,6 +31,34 @@ import Unbound.Generics.LocallyNameless.Name
 -- progress.  Instances should just pass it through unchanged.
 newtype AlphaCtx = AlphaCtx ()
 
+-- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
+-- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
+--
+-- @@
+--   inconsistentDisjointSet <> s == inconsistentDisjointSet
+--   s <> inconsistentDisjoinSet == inconsistentDisjointSet
+-- @@
+newtype DisjointSet a = DisjointSet (Maybe [a])
+
+instance Eq a => Monoid (DisjointSet a) where
+  mempty = DisjointSet (Just [])
+  mappend s1 s2 =
+    case (s1, s2) of
+      (DisjointSet (Just xs), DisjointSet (Just ys)) | disjointLists xs ys -> DisjointSet (Just (xs <> ys))
+      _ -> inconsistentDisjointSet
+
+instance Foldable DisjointSet where
+  foldMap summarize (DisjointSet ms) = foldMap (foldMap summarize) ms
+
+inconsistentDisjointSet :: DisjointSet a
+inconsistentDisjointSet = DisjointSet Nothing
+
+disjointLists :: Eq a => [a] -> [a] -> Bool
+disjointLists xs ys = null (intersect xs ys)
+
+isConsistentDisjointSet :: DisjointSet a -> Bool
+isConsistentDisjointSet (DisjointSet Nothing) = False
+isConsistentDisjointSet _ = True
 
 -- | Types that are instances of @Alpha@ may participate in name representation.
 --
@@ -44,8 +79,8 @@ class (Show a) => Alpha a where
   open c b = to . gopen c b . from
 
   -- | @isPat x@ dynamically checks whether @x@ can be used as a valid pattern.
-  isPat :: a -> Maybe [AnyName]
-  default isPat :: (Generic a, GAlpha (Rep a)) => a -> Maybe [AnyName]
+  isPat :: a -> DisjointSet AnyName
+  default isPat :: (Generic a, GAlpha (Rep a)) => a -> DisjointSet AnyName
   isPat = gisPat . from
   
   -- | @isEmbed@ is needed internally for the implementation of
@@ -60,5 +95,5 @@ class GAlpha f where
   gclose :: Alpha b => AlphaCtx -> b -> f a -> f a
   gopen :: Alpha b => AlphaCtx -> b -> f a -> f a
 
-  gisPat :: f a -> Maybe [AnyName]
+  gisPat :: f a -> DisjointSet AnyName
 
