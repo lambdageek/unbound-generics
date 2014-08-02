@@ -12,21 +12,53 @@
              , GADTs #-}
 module Unbound.Generics.LocallyNameless.Name
        (
+         -- * Names over terms
          Name
        , isFreeName
+         -- * Name construction
+       , string2Name
+       , s2n
+         -- * Heterogeneous names
        , AnyName(..)
        ) where
 
 import Data.Typeable (Typeable(..), gcast, typeOf)
 
--- | An abstract datatype of names @Name a@ that stand for values of type @a@.
+-- | An abstract datatype of names @Name a@ that stand for terms of
+-- type @a@.  The type @a@ is used as a tag to distinguish these names
+-- from names that may stand for other sorts of terms.
+--
+-- Two names in a term are consider
+-- 'Unbound.Generics.LocallyNameless.Operations.aeq' equal when they
+-- are the same name (in the sense of '(==)').  In patterns, however,
+-- any two names are equal if they occur in the same place within the
+-- pattern.  This induces alpha equivalence on terms in general.
+--
+-- Names may either be free or bound (see 'isFreeName').  Free names
+-- may be extracted from patterns using
+-- 'Unbound.Generics.LocallyNameless.Alpha.isPat'.  Bound names
+-- cannot be.
+-- 
 data Name a = Fn String !Integer    -- free names
             | Bn !Integer !Integer  -- bound names / binding level + pattern index
             deriving (Eq, Ord, Typeable)
 
+-- | Returns 'True' iff the given @Name a@ is free.
 isFreeName :: Name a -> Bool
 isFreeName (Fn _ _) = True
 isFreeName _ = False
+
+-- | Make a free 'Name a' from a 'String'
+string2Name :: String -> Name a
+string2Name s = makeName s 0
+
+-- | Synonym for 'string2Name'.
+s2n :: String -> Name a
+s2n = string2Name
+
+-- | Make a name from a 'String' and an 'Integer' index
+makeName :: String -> Integer -> Name a
+makeName = Fn
 
 instance Show (Name a) where
   show (Fn "" n) = "_" ++ (show n)
@@ -34,7 +66,7 @@ instance Show (Name a) where
   show (Fn x n) = x ++ (show n)
   show (Bn x y) = show x ++ "@" ++ show y
 
--- | An @AnyName@ is a name that stands for a value of some (existentially hidden) type.
+-- | An @AnyName@ is a name that stands for a term of some (existentially hidden) type.
 data AnyName where
   AnyName :: Typeable a => Name a -> AnyName
 
