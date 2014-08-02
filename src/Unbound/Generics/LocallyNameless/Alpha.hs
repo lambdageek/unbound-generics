@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_HADDOCK show-extensions #-}
 -- |
 -- Module     : Unbound.Generics.LocallyNameless.Alpha
@@ -17,6 +18,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , isConsistentDisjointSet
   -- * Implementation details
   , AlphaCtx
+  , initialCtx
   ) where
 
 import Data.Function (on)
@@ -30,6 +32,9 @@ import Unbound.Generics.LocallyNameless.Name
 -- | Some 'Alpha' operations need to record information about their
 -- progress.  Instances should just pass it through unchanged.
 newtype AlphaCtx = AlphaCtx ()
+
+initialCtx :: AlphaCtx
+initialCtx = AlphaCtx ()
 
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
@@ -90,6 +95,7 @@ class (Show a) => Alpha a where
   isEmbed :: a -> Bool
   isEmbed _ = False
 
+-- | The "Generic" representation version of 'Alpha'
 class GAlpha f where
   gaeq :: AlphaCtx -> f a -> f a -> Bool
   gclose :: Alpha b => AlphaCtx -> b -> f a -> f a
@@ -97,3 +103,56 @@ class GAlpha f where
 
   gisPat :: f a -> DisjointSet AnyName
 
+instance (Alpha c) => GAlpha (K1 i c) where
+  gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
+
+  gclose ctx b = K1 . close ctx b . unK1
+  gopen ctx b = K1 . open ctx b . unK1
+
+  gisPat = isPat . unK1
+
+instance GAlpha f => GAlpha (M1 i c f) where
+  gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
+
+  gclose ctx b = M1 . gclose ctx b . unM1
+  gopen ctx b = M1 . gclose ctx b . unM1
+
+  gisPat = gisPat . unM1
+
+instance GAlpha U1 where
+  gaeq _ctx _ _ = True
+
+  gclose _ctx _b _ = U1
+  gopen _ctx _b _ = U1
+
+  gisPat _ = mempty
+
+instance GAlpha V1 where
+  gaeq _ctx _ _ = False
+
+  gclose _ctx _b _ = undefined
+  gopen _ctx _b _ = undefined
+
+  gisPat _ = mempty
+
+instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
+  gaeq ctx (f1 :*: g1) (f2 :*: g2) =
+    gaeq ctx f1 f2 && gaeq ctx g1 g2
+
+  gclose ctx b (f :*: g) = gclose ctx b f :*: gclose ctx b g
+  gopen ctx b (f :*: g) = gopen ctx b f :*: gopen ctx b g
+
+  gisPat (f :*: g) = gisPat f <> gisPat g
+
+instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
+  gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
+  gaeq ctx  (R1 g1) (R1 g2) = gaeq ctx g1 g2
+  gaeq _ctx _       _       = False
+
+  gclose ctx b (L1 f) = L1 (gclose ctx b f)
+  gclose ctx b (R1 g) = R1 (gclose ctx b g)
+  gopen ctx b (L1 f) = L1 (gopen ctx b f)
+  gopen ctx b (R1 g) = R1 (gopen ctx b g)
+
+  gisPat (L1 f) = gisPat f
+  gisPat (R1 g) = gisPat g
