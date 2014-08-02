@@ -13,6 +13,7 @@
 module Unbound.Generics.LocallyNameless.Name
        (
          Name
+       , isFreeName
        , AnyName(..)
        ) where
 
@@ -22,6 +23,16 @@ import Data.Typeable (Typeable(..), gcast, typeOf)
 data Name a = Fn String !Integer    -- free names
             | Bn !Integer !Integer  -- bound names / binding level + pattern index
             deriving (Eq, Ord, Typeable)
+
+isFreeName :: Name a -> Bool
+isFreeName (Fn _ _) = True
+isFreeName _ = False
+
+instance Show (Name a) where
+  show (Fn "" n) = "_" ++ (show n)
+  show (Fn x 0) = x
+  show (Fn x n) = x ++ (show n)
+  show (Bn x y) = show x ++ "@" ++ show y
 
 -- | An @AnyName@ is a name that stands for a value of some (existentially hidden) type.
 data AnyName where
