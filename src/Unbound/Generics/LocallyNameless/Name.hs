@@ -13,7 +13,7 @@
 module Unbound.Generics.LocallyNameless.Name
        (
          -- * Names over terms
-         Name
+         Name(..)
        , isFreeName
          -- * Name construction
        , string2Name

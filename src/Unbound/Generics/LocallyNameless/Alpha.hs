@@ -27,19 +27,23 @@ import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>))
 import Data.Ratio (Ratio)
-import Data.Typeable (Typeable(..))
+import Data.Typeable (Typeable(..), gcast)
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
 
 -- | Some 'Alpha' operations need to record information about their
 -- progress.  Instances should just pass it through unchanged.
-data AlphaCtx = AlphaCtx { ctxMode :: Mode }
+--
+-- The context records whether we are currently operating on terms or patterns,
+-- and how many binding levels we've descended.
+data AlphaCtx = AlphaCtx { ctxMode :: !Mode, ctxLevel :: !Integer }
 
 data Mode = Term | Pat
+          deriving Eq
 
 initialCtx :: AlphaCtx
-initialCtx = AlphaCtx { ctxMode = Term }
+initialCtx = AlphaCtx { ctxMode = Term, ctxLevel = 0 }
 
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
@@ -83,10 +87,12 @@ class (Show a) => Alpha a where
   default aeq' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Bool
   aeq' c = (gaeq c) `on` from
 
+  -- | Replace free names by bound names.
   close :: Alpha b => AlphaCtx -> b -> a -> a
   default close :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
   close c b = to . gclose c b . from
 
+  -- | Replace bound names by free names.
   open :: Alpha b => AlphaCtx -> b -> a -> a
   default open :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
   open c b = to . gopen c b . from
@@ -103,6 +109,22 @@ class (Show a) => Alpha a where
   isEmbed :: a -> Bool
   isEmbed _ = False
 
+  -- | If @a@ is a pattern, finds the @n@th name in the pattern
+  -- (starting from zero), returning the number of names encountered
+  -- in not found.
+  nthPatFind :: a -> NthPatFind
+  default nthPatFind :: (Generic a, GAlpha (Rep a)) => a -> NthPatFind
+  nthPatFind = gnthPatFind . from
+
+  -- | If @a@ is a pattern, find the index of the given name in the pattern.
+  namePatFind :: a -> NamePatFind
+  default namePatFind :: (Generic a, GAlpha (Rep a)) => a -> NamePatFind
+  namePatFind = gnamePatFind . from
+
+type NthPatFind = Integer -> Either Integer AnyName
+type NamePatFind = AnyName -> Either Integer Integer -- Left - names skipped over
+                                                     -- Right - index of the name we found
+
 -- | The "Generic" representation version of 'Alpha'
 class GAlpha f where
   gaeq :: AlphaCtx -> f a -> f a -> Bool
@@ -110,6 +132,9 @@ class GAlpha f where
   gopen :: Alpha b => AlphaCtx -> b -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
+
+  gnthPatFind :: f a -> NthPatFind
+  gnamePatFind :: f a -> NamePatFind
 
 instance (Alpha c) => GAlpha (K1 i c) where
   gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
@@ -119,6 +144,9 @@ instance (Alpha c) => GAlpha (K1 i c) where
 
   gisPat = isPat . unK1
 
+  gnthPatFind = nthPatFind . unK1
+  gnamePatFind = namePatFind . unK1
+
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
 
@@ -127,6 +155,9 @@ instance GAlpha f => GAlpha (M1 i c f) where
 
   gisPat = gisPat . unM1
 
+  gnthPatFind = gnthPatFind . unM1
+  gnamePatFind = gnamePatFind . unM1
+  
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
 
@@ -134,6 +165,9 @@ instance GAlpha U1 where
   gopen _ctx _b _ = U1
 
   gisPat _ = mempty
+
+  gnthPatFind _ _i = Left 0
+  gnamePatFind _ _ = Left 0
 
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
@@ -143,6 +177,9 @@ instance GAlpha V1 where
 
   gisPat _ = mempty
 
+  gnthPatFind _ _i = Left 0
+  gnamePatFind _ _ = Left 0
+
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
     gaeq ctx f1 f2 && gaeq ctx g1 g2
@@ -151,6 +188,15 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gopen ctx b (f :*: g) = gopen ctx b f :*: gopen ctx b g
 
   gisPat (f :*: g) = gisPat f <> gisPat g
+
+  gnthPatFind (f :*: g) i = case gnthPatFind f i of
+    Left i' -> gnthPatFind g i'
+    Right ans -> Right ans
+  gnamePatFind (f :*: g) n = case gnamePatFind f n of
+    Left j -> case gnamePatFind g n of
+      Left i -> Left $! j + i
+      Right k -> Right $! j + k
+    Right k -> Right k
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
@@ -165,6 +211,12 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gisPat (L1 f) = gisPat f
   gisPat (R1 g) = gisPat g
 
+  gnthPatFind (L1 f) i = gnthPatFind f i
+  gnthPatFind (R1 g) i = gnthPatFind g i
+  
+  gnamePatFind (L1 f) n = gnamePatFind f n
+  gnamePatFind (R1 g) n = gnamePatFind g n
+
 -- ============================================================
 -- Alpha instances for the usual types
 
@@ -176,6 +228,9 @@ instance Alpha Int where
 
   isPat _ = mempty
 
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
+
 instance Alpha Char where
   aeq' _ctx i j = i == j
 
@@ -183,6 +238,9 @@ instance Alpha Char where
   open _ctx _b i = i
 
   isPat _ = mempty
+
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
 
 instance Alpha Integer where
   aeq' _ctx i j = i == j
@@ -192,6 +250,9 @@ instance Alpha Integer where
 
   isPat _ = mempty
 
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
+
 instance Alpha Float where
   aeq' _ctx i j = i == j
 
@@ -199,6 +260,9 @@ instance Alpha Float where
   open _ctx _b i = i
 
   isPat _ = mempty
+
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
 
 instance Alpha Double where
   aeq' _ctx i j = i == j
@@ -208,6 +272,9 @@ instance Alpha Double where
 
   isPat _ = mempty
 
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
+
 instance (Integral n, Alpha n) => Alpha (Ratio n) where
   aeq' _ctx i j = i == j
 
@@ -215,6 +282,9 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   open _ctx _b i = i
 
   isPat _ = mempty
+
+  nthPatFind _ = Left
+  namePatFind _ _ = Left 0
 
 instance Alpha a => Alpha (Maybe a)
 instance Alpha a => Alpha [a]
@@ -236,11 +306,34 @@ instance Typeable a => Alpha (Name a) where
                        -- (since they're both bound, so they can
                        -- vary).
 
-  close _ _ _ = error "unimplemented: close for Name"
-  open _ _ _ = error "unimplemented: open for Name"
+  open ctx b a@(Bn l k) =
+    if ctxMode ctx == Term && ctxLevel ctx == l
+    then case nthPatFind b k of
+      Right (AnyName nm) -> case gcast nm of
+        Just nm' -> nm'
+        Nothing -> error "LocallyNameless.open: inconsistent sorts"
+      Left _ -> error "LocallyNameless.open : inconsistency - pattern had too few variables"
+    else
+      a
+  open _ctx _ a = a
+
+  close ctx b a@(Fn _ _) =
+    if ctxMode ctx == Term
+    then case namePatFind b (AnyName a) of
+      Right k -> Bn (ctxLevel ctx) k
+      Left _ -> a
+    else a
+  close _ctx _ a = a
   
 
   isPat n = if isFreeName n
             then singletonDisjointSet (AnyName n)
             else inconsistentDisjointSet
 
+  nthPatFind nm i =
+    if i == 0 then Right (AnyName nm) else Left $! i-1
+
+  namePatFind nm1 (AnyName nm2) =
+    case gcast nm1 of
+      Just nm1' -> if nm1' == nm2 then Right 0 else Left 1
+      Nothing -> Left 1

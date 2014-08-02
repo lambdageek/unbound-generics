@@ -12,5 +12,5 @@ module Unbound.Generics.LocallyNameless (
   ) where
 
 import Unbound.Generics.LocallyNameless.Alpha hiding (aeq')
-import Unbound.Generics.LocallyNameless.Name
+import Unbound.Generics.LocallyNameless.Name hiding (Bn, Fn)
 import Unbound.Generics.LocallyNameless.Operations
