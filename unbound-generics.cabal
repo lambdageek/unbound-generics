@@ -20,6 +20,7 @@ library
   exposed-modules:     Unbound.Generics.LocallyNameless
                        Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Name
+                       Unbound.Generics.LocallyNameless.Operations
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.6 && <5

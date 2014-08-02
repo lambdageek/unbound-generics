@@ -7,9 +7,10 @@
 --
 module Unbound.Generics.LocallyNameless (
   module Unbound.Generics.LocallyNameless.Alpha,
-  module Unbound.Generics.LocallyNameless.Name
+  module Unbound.Generics.LocallyNameless.Name,
+  module Unbound.Generics.LocallyNameless.Operations
   ) where
 
-import Unbound.Generics.LocallyNameless.Alpha
+import Unbound.Generics.LocallyNameless.Alpha hiding (aeq')
 import Unbound.Generics.LocallyNameless.Name
-       
+import Unbound.Generics.LocallyNameless.Operations

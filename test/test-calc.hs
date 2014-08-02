@@ -1,3 +1,10 @@
+-- |
+-- Module     : test-stlc
+-- Copyright  : (c) 2014, Aleksey Kliger
+-- License    : BSD3 (See LICENSE)
+-- Maintainer : Aleksey Kliger
+-- Stability  : experimental
+--
 {-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
 module Main where
 
@@ -38,7 +45,6 @@ ex1 = Add (C 1) (C 2)
 
 test_ex1 :: Test
 test_ex1 = TestCase $ assertBool "example 1" (whnf emptyEnv ex1 `aeq` (Just $ C 3))
-  where aeq = aeq' initialCtx
 
 main :: IO ()
 main = do
