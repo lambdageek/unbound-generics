@@ -15,6 +15,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   -- * Binder variables
   , DisjointSet(..)
   , inconsistentDisjointSet
+  , singletonDisjointSet
   , isConsistentDisjointSet
   -- * Implementation details
   , AlphaCtx
@@ -25,16 +26,20 @@ import Data.Function (on)
 import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>))
+import Data.Ratio (Ratio)
+import Data.Typeable (Typeable(..))
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
 
 -- | Some 'Alpha' operations need to record information about their
 -- progress.  Instances should just pass it through unchanged.
-newtype AlphaCtx = AlphaCtx ()
+data AlphaCtx = AlphaCtx { ctxMode :: Mode }
+
+data Mode = Term | Pat
 
 initialCtx :: AlphaCtx
-initialCtx = AlphaCtx ()
+initialCtx = AlphaCtx { ctxMode = Term }
 
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
@@ -57,6 +62,9 @@ instance Foldable DisjointSet where
 
 inconsistentDisjointSet :: DisjointSet a
 inconsistentDisjointSet = DisjointSet Nothing
+
+singletonDisjointSet :: a -> DisjointSet a
+singletonDisjointSet x = DisjointSet (Just [x])
 
 disjointLists :: Eq a => [a] -> [a] -> Bool
 disjointLists xs ys = null (intersect xs ys)
@@ -156,3 +164,65 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
 
   gisPat (L1 f) = gisPat f
   gisPat (R1 g) = gisPat g
+
+-- ============================================================
+-- Alpha instances for the usual types
+
+instance Alpha Int where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance Alpha Char where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance Alpha Integer where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance Alpha Float where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance Alpha Double where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance (Integral n, Alpha n) => Alpha (Ratio n) where
+  aeq' _ctx i j = i == j
+
+  close _ctx _b i = i
+  open _ctx _b i = i
+
+  isPat _ = mempty
+
+instance Alpha a => Alpha (Maybe a)
+instance Alpha a => Alpha [a]
+instance (Alpha a,Alpha b) => Alpha (Either a b)
+instance (Alpha a,Alpha b) => Alpha (a,b)
+instance (Alpha a,Alpha b,Alpha c) => Alpha (a,b,c)
+instance (Alpha a, Alpha b,Alpha c, Alpha d) => Alpha (a,b,c,d)
+instance (Alpha a, Alpha b,Alpha c, Alpha d, Alpha e) =>
+   Alpha (a,b,c,d,e)
+
+
