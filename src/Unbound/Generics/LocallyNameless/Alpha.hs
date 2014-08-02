@@ -225,4 +225,22 @@ instance (Alpha a, Alpha b,Alpha c, Alpha d) => Alpha (a,b,c,d)
 instance (Alpha a, Alpha b,Alpha c, Alpha d, Alpha e) =>
    Alpha (a,b,c,d,e)
 
+-- ============================================================
+-- Alpha instances for interesting types
+
+instance Typeable a => Alpha (Name a) where
+  aeq' ctx n1 n2 =
+    case ctxMode ctx of
+      Term -> n1 == n2 -- in terms, better be the same name
+      Pat  -> True     -- in a pattern, names are always equivlent
+                       -- (since they're both bound, so they can
+                       -- vary).
+
+  close _ _ _ = error "unimplemented: close for Name"
+  open _ _ _ = error "unimplemented: open for Name"
+  
+
+  isPat n = if isFreeName n
+            then singletonDisjointSet (AnyName n)
+            else inconsistentDisjointSet
 
