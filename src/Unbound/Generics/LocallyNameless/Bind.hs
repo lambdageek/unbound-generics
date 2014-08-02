@@ -37,6 +37,8 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
 
   isPat _ = inconsistentDisjointSet
 
+  isTerm _ = False
+
   close ctx b (B p t) =
     B (close (patternCtx ctx) b p) (close (incrLevelCtx ctx) b t)
 

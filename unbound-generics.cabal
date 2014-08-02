@@ -18,11 +18,12 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Unbound.Generics.LocallyNameless
+                       Unbound.Generics.LocallyNameless.Name
+                       Unbound.Generics.LocallyNameless.Fresh
                        Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Bind
-                       Unbound.Generics.LocallyNameless.Name
+                       Unbound.Generics.LocallyNameless.Embed
                        Unbound.Generics.LocallyNameless.Operations
-                       Unbound.Generics.LocallyNameless.Fresh
                        Unbound.Generics.PermM
   -- other-modules:       
   -- other-extensions:    

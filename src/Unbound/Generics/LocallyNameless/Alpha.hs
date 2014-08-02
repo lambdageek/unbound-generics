@@ -22,6 +22,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , AlphaCtx
   , initialCtx
   , patternCtx
+  , termCtx
   , isTermCtx
   , incrLevelCtx
   ) where
@@ -58,6 +59,10 @@ initialCtx = AlphaCtx { ctxMode = Term, ctxLevel = 0 }
 -- | Switches to a context where we expect to operate on patterns.
 patternCtx :: AlphaCtx -> AlphaCtx
 patternCtx ctx = ctx { ctxMode = Pat }
+
+-- | Switches to a context where we expect to operate on terms.
+termCtx :: AlphaCtx -> AlphaCtx
+termCtx ctx = ctx { ctxMode = Term }
 
 -- | Returns 'True' iff we are in a context where we expect to see terms.
 isTermCtx :: AlphaCtx -> Bool
@@ -124,7 +129,12 @@ class (Show a) => Alpha a where
   isPat :: a -> DisjointSet AnyName
   default isPat :: (Generic a, GAlpha (Rep a)) => a -> DisjointSet AnyName
   isPat = gisPat . from
-  
+
+  -- | @isPat x@ dynamically checks whether @x@ can be used as a valid term.
+  isTerm :: a -> Bool
+  default isTerm :: (Generic a, GAlpha (Rep a)) => a -> Bool
+  isTerm = gisTerm . from
+
   -- | @isEmbed@ is needed internally for the implementation of
   --   'isPat'.  @isEmbed@ is true for terms wrapped in 'Embed' and zero
   --   or more occurrences of 'Shift'.  The default implementation
@@ -165,6 +175,7 @@ class GAlpha f where
   gopen :: Alpha b => AlphaCtx -> b -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
+  gisTerm :: f a -> Bool
 
   gnthPatFind :: f a -> NthPatFind
   gnamePatFind :: f a -> NamePatFind
@@ -179,6 +190,7 @@ instance (Alpha c) => GAlpha (K1 i c) where
   gopen ctx b = K1 . open ctx b . unK1
 
   gisPat = isPat . unK1
+  gisTerm = isTerm . unK1
 
   gnthPatFind = nthPatFind . unK1
   gnamePatFind = namePatFind . unK1
@@ -193,6 +205,7 @@ instance GAlpha f => GAlpha (M1 i c f) where
   gopen ctx b = M1 . gclose ctx b . unM1
 
   gisPat = gisPat . unM1
+  gisTerm = gisTerm . unM1
 
   gnthPatFind = gnthPatFind . unM1
   gnamePatFind = gnamePatFind . unM1
@@ -208,6 +221,7 @@ instance GAlpha U1 where
   gopen _ctx _b _ = U1
 
   gisPat _ = mempty
+  gisTerm _ = True
 
   gnthPatFind _ _i = Left 0
   gnamePatFind _ _ = Left 0
@@ -222,6 +236,7 @@ instance GAlpha V1 where
   gopen _ctx _b _ = undefined
 
   gisPat _ = mempty
+  gisTerm _ = False
 
   gnthPatFind _ _i = Left 0
   gnamePatFind _ _ = Left 0
@@ -237,6 +252,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gopen ctx b (f :*: g) = gopen ctx b f :*: gopen ctx b g
 
   gisPat (f :*: g) = gisPat f <> gisPat g
+  gisTerm (f :*: g) = gisTerm f && gisTerm g
 
   gnthPatFind (f :*: g) i = case gnthPatFind f i of
     Left i' -> gnthPatFind g i'
@@ -268,6 +284,9 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gisPat (L1 f) = gisPat f
   gisPat (R1 g) = gisPat g
 
+  gisTerm (L1 f) = gisTerm f
+  gisTerm (R1 g) = gisTerm g
+
   gnthPatFind (L1 f) i = gnthPatFind f i
   gnthPatFind (R1 g) i = gnthPatFind g i
   
@@ -291,6 +310,7 @@ instance Alpha Int where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -305,6 +325,7 @@ instance Alpha Char where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -319,6 +340,7 @@ instance Alpha Integer where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -333,6 +355,7 @@ instance Alpha Float where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -347,6 +370,7 @@ instance Alpha Double where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -361,6 +385,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   open _ctx _b i = i
 
   isPat _ = mempty
+  isTerm _ = True
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
@@ -410,6 +435,8 @@ instance Typeable a => Alpha (Name a) where
   isPat n = if isFreeName n
             then singletonDisjointSet (AnyName n)
             else inconsistentDisjointSet
+
+  isTerm _ = True
 
   nthPatFind nm i =
     if i == 0 then Right (AnyName nm) else Left $! i-1

@@ -30,7 +30,8 @@ data Ty = TyVar TyName
    deriving (Show, Generic, Typeable)
 
 data Tm = TmVar TmName
-        | Lam Ty (Bind TmName Tm) -- Lam (Bind (TmName, Embed Ty) Tm)
+        -- | Lam Ty (Bind TmName Tm)
+        | Lam (Bind (TmName, Embed Ty) Tm)
         | TLam (Bind TyName Tm)
         | App Tm Tm
         | TApp Tm Ty
@@ -65,7 +66,7 @@ c :: Name Ty
 
 -- /\a. \x:a. x
 polyid :: Tm
-polyid = TLam (bind a (Lam (TyVar a) (bind x (TmVar x))))
+polyid = TLam (bind a (Lam (bind (x, Embed (TyVar a)) (TmVar x))))
 
 -- All a. a -> a
 polyidty :: Ty
@@ -73,11 +74,11 @@ polyidty = All (bind a (Arr (TyVar a) (TyVar a)))
 
 -- /\b. \y:b. y
 polyid2 :: Tm
-polyid2 = TLam (bind b (Lam (TyVar b) (bind y (TmVar y))))
+polyid2 = TLam (bind b (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
 
 -- /\c. \y:b. y
 bad_polyid2 :: Tm
-bad_polyid2 = TLam (bind c (Lam (TyVar b) (bind y (TmVar y))))
+bad_polyid2 = TLam (bind c (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
 
 
 -----------------------------------------------------------------
