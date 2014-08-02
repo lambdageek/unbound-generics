@@ -10,14 +10,15 @@ license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
 maintainer:          aleksey@lambdageek.org
--- copyright:           
+copyright:           (c) 2014, Aleksey Kliger
 category:            Language
 build-type:          Simple
 -- extra-source-files:  
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Unbound.Generics.LocallyNameless.Alpha
+  exposed-modules:     Unbound.Generics.LocallyNameless
+                       Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Name
   -- other-modules:       
   -- other-extensions:    

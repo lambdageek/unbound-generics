@@ -1,8 +1,11 @@
 -- |
--- Module: Unbound.Generics.LocallyNameless.Name
--- Copyright: (c) 2014, Aleksey Kliger
--- License: BSD3 (See LICENSE)
+-- Module     : Unbound.Generics.LocallyNameless.Name
+-- Copyright  : (c) 2014, Aleksey Kliger
+-- License    : BSD3 (See LICENSE)
+-- Maintainer : Aleksey Kliger
+-- Stability  : experimental
 --
+-- Names stand for values.  They may be bound or free.
 {-# LANGUAGE DeriveDataTypeable
              , ExistentialQuantification
              , FlexibleContexts
