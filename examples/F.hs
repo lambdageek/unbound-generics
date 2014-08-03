@@ -14,6 +14,7 @@ import GHC.Generics
 import Data.Typeable (Typeable)
 
 import Control.Monad.Identity
+import Control.Monad.Writer hiding (All)
 import Control.Monad.Trans.Error
 import Data.List as List
 
@@ -91,12 +92,12 @@ data Ctx = Ctx { getDelta :: Delta , getGamma :: Gamma }
 emptyCtx :: Ctx
 emptyCtx = Ctx { getDelta = [], getGamma = [] }
 
-type M = ErrorT String (FreshMT Identity)
+type M = ErrorT String (WriterT [String] (FreshMT Identity))
 
-runM :: M a -> a
-runM m = case (runIdentity $ runFreshMT (runErrorT m)) of
-   Left s  -> error s
-   Right ans -> ans
+runM :: M a -> (a, [String])
+runM m = case (runIdentity $ runFreshMT $ runWriterT (runErrorT m)) of
+   (Left s, msgs)  -> error $ s ++ "\nLog: " ++ show msgs
+   (Right ans, msgs) -> (ans, msgs)
 
 checkTyVar :: Ctx -> TyName -> M ()
 checkTyVar g v = do
@@ -118,23 +119,32 @@ extendTm :: TmName -> Ty -> Ctx -> Ctx
 extendTm n ty ctx = ctx { getGamma = (n, ty) : (getGamma ctx) }
 
 tcty :: Ctx -> Ty -> M ()
-tcty g  (TyVar alpha) =
+tcty g  (TyVar alpha) = do
+   trace $ "looking up tyvar " ++ show alpha
    checkTyVar g alpha
 tcty g  (All bnder) = do
+   trace $ "checking " ++ show (All bnder)
    (alpha, ty') <- unbind bnder
+   trace $ "unbinding All gave " ++ show alpha ++ " in " ++ show ty'
    tcty (extendTy alpha g) ty'
 tcty g  (Arr t1 t2) = do
+   trace $ "checking " ++ show (Arr t1 t2)
    tcty g  t1
    tcty g  t2
 
+trace :: String -> M ()
+trace s = lift (tell [s])
+
 ti :: Ctx -> Tm -> M Ty
-ti g (TmVar v) = lookupTmVar g v
+ti g (TmVar v) = trace ("looking up " ++ show v) >> lookupTmVar g v
 ti g (Lam bnd) = do
+  trace $ "checking " ++ show (Lam bnd)
   ((v, Embed ty1), t) <- unbind bnd
   tcty g ty1
   ty2 <- ti (extendTm v ty1 g) t
   return (Arr ty1 ty2)
 ti g (App t1 t2) = do
+  trace $ "checking " ++ show (App t1 t2)
   ty1 <- ti g t1
   ty2 <- ti g t2
   case ty1 of
@@ -142,10 +152,13 @@ ti g (App t1 t2) = do
       return ty21
     _ -> throwError "TypeError"
 ti g (TLam bnd) = do
+  trace $ "checking " ++ show (TLam bnd)
   (v, t) <- unbind bnd
+  trace $ "unbinding TLam gave " ++ show v ++ " in " ++ show t
   ty <- ti (extendTy v g) t
   return (All (bind v ty))
 ti g (TApp t ty) = do
+  trace $ "checking " ++ show (TApp t ty)
   tyt <- ti g t
   case tyt of
    (All bnder) -> do
