@@ -202,7 +202,7 @@ instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
 
   gclose ctx b = M1 . gclose ctx b . unM1
-  gopen ctx b = M1 . gclose ctx b . unM1
+  gopen ctx b = M1 . gopen ctx b . unM1
 
   gisPat = gisPat . unM1
   gisTerm = gisTerm . unM1
