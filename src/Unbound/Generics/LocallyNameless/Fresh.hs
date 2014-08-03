@@ -5,13 +5,14 @@
 -- Maintainer : Aleksey Kliger
 -- Stability  : experimental
 --
--- Global and local freshness monads.
+-- Global freshness monad.
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Unbound.Generics.LocallyNameless.Fresh where
 
 import Control.Applicative (Applicative)
-import Control.Monad (MonadPlus)
-import Control.Monad.Fix (MonadFix)
+import Control.Monad ()
+
+import Control.Monad.Identity
 
 import Control.Monad.Trans
 import Control.Monad.Trans.Error
@@ -81,3 +82,20 @@ instance (Monoid w, Fresh m) => Fresh (Strict.WriterT w m) where
 
 instance MonadTrans FreshMT where
   lift = FreshMT . lift
+
+
+------------------------------------------------------------
+-- FreshM monad
+
+-- | A convenient monad which is an instance of 'Fresh'.  It keeps
+--   track of a global index used for generating fresh names, which is
+--   incremented every time 'fresh' is called.
+type FreshM = FreshMT Identity
+
+-- | Run a FreshM computation (with the global index starting at zero).
+runFreshM :: FreshM a -> a
+runFreshM = runIdentity . runFreshMT
+
+-- | Run a FreshM computation given a starting index.
+contFreshM :: FreshM a -> Integer -> a
+contFreshM m = runIdentity . contFreshMT m

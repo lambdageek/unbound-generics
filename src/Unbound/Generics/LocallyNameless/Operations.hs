@@ -15,6 +15,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , Embed(..)
        , rebind
        , unrebind
+       , embed
        , unembed
        ) where
 
@@ -67,6 +68,10 @@ rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
 -- 'freshen'ed.
 unrebind :: (Alpha p1, Alpha p2) => Rebind p1 p2 -> (p1, p2)
 unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
+
+-- | An alias for 'Embed'
+embed :: t -> Embed t
+embed = Embed
 
 -- | @'unembed' p@ extracts the term embedded in the pattern @p@.
 unembed :: Embed t -> t

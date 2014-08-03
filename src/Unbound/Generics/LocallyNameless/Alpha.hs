@@ -398,6 +398,8 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
 
+instance Alpha Bool
+
 instance Alpha a => Alpha (Maybe a)
 instance Alpha a => Alpha [a]
 instance (Alpha a,Alpha b) => Alpha (Either a b)

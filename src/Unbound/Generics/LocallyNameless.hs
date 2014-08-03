@@ -16,7 +16,7 @@ module Unbound.Generics.LocallyNameless (
   module Unbound.Generics.LocallyNameless.Subst
   ) where
 
-import Unbound.Generics.LocallyNameless.Alpha hiding (aeq')
+import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Name hiding (Bn, Fn)
 import Unbound.Generics.LocallyNameless.Bind hiding (B)
 import Unbound.Generics.LocallyNameless.Embed

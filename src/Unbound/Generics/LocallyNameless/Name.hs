@@ -19,6 +19,9 @@ module Unbound.Generics.LocallyNameless.Name
          -- * Name construction
        , string2Name
        , s2n
+       , makeName
+         -- * Name inspection
+       , name2String
          -- * Heterogeneous names
        , AnyName(..)
        ) where
@@ -61,6 +64,11 @@ s2n = string2Name
 -- | Make a name from a 'String' and an 'Integer' index
 makeName :: String -> Integer -> Name a
 makeName = Fn
+
+-- | Get the string part of a 'Name'.
+name2String :: Name a -> String
+name2String (Fn s _) = s
+name2String (Bn _ _)   = error "Internal Error: cannot call name2Integer for bound names"
 
 instance Show (Name a) where
   show (Fn "" n) = "_" ++ (show n)
