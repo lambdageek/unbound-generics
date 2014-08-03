@@ -72,6 +72,9 @@ instance Show (Name a) where
 data AnyName where
   AnyName :: Typeable a => Name a -> AnyName
 
+instance Show AnyName where
+  show (AnyName nm) = show nm
+
 instance Eq AnyName where
   (AnyName n1) == (AnyName n2) = case gcast n2 of
     Just n2' -> n1 == n2'

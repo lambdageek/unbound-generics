@@ -461,3 +461,42 @@ instance Typeable a => Alpha (Name a) where
       nm' <- fresh nm
       return (nm', single (AnyName nm) (AnyName nm'))
     else error "freshen' on a Name in term position"
+
+instance Alpha AnyName where
+  aeq' ctx x y =
+    if x == y
+    then True
+    else
+      -- in a term unequal variables are unequal, in a pattern it's
+      -- ok.
+      isTermCtx ctx
+
+  isTerm _ = True
+
+  isPat n@(AnyName nm) = if isFreeName nm
+                         then singletonDisjointSet n
+                         else inconsistentDisjointSet
+
+  swaps' ctx perm n =
+    if isTermCtx ctx
+    then apply perm n
+    else n
+
+  freshen' ctx (AnyName nm) =
+    if isTermCtx ctx
+    then error "LocallyNameless.freshen' on AnyName in Term mode"
+    else do
+      nm' <- fresh nm
+      return (AnyName nm', single (AnyName nm) (AnyName nm'))
+
+  open ctx b (AnyName nm) = AnyName (open ctx b nm)
+
+  close ctx b (AnyName nm) = AnyName (close ctx b nm)
+    
+  nthPatFind nm i =
+    if i == 0 then Right nm else Left $! i - 1
+
+  namePatFind nmHave nmWant =
+    if nmHave == nmWant
+    then Right 0
+    else Left 1
