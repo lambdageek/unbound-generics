@@ -26,12 +26,20 @@ test_ex2_closed = TestCase $ assertBool "example 2 (closed)" (aeq ex2xc ex2yc)
 test_ex3 :: Test
 test_ex3 = TestCase $ assertBool "example 3" (aeq ex3x ex3y)
 
+test_ex4 :: Test
+test_ex4 = TestCase $ assertBool "example 4 (let scoping)" (runWhnf emptyEnv ex4 `aeq` Just ex4_ans)
+
+test_ex5 :: Test
+test_ex5 = TestCase $ assertBool "example 5 (let* scoping)" (runWhnf emptyEnv ex5 `aeq` Just ex5_ans)
+
 main :: IO ()
 main = do
   result <- runTestTT $ TestList [test_ex1
                                  , test_ex2_open
                                  , test_ex2_closed
                                  , test_ex3
+                                 , test_ex4
+                                 , test_ex5
                             ]
   if failures result > 0
     then fail "Some tests failed!"

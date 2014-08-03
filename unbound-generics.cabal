@@ -22,6 +22,7 @@ library
                        Unbound.Generics.LocallyNameless.Fresh
                        Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Bind
+                       Unbound.Generics.LocallyNameless.Rebind
                        Unbound.Generics.LocallyNameless.Embed
                        Unbound.Generics.LocallyNameless.Operations
                        Unbound.Generics.PermM

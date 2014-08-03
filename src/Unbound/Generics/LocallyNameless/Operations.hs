@@ -6,12 +6,24 @@
 -- Stability  : experimental
 --
 -- Operations on terms and patterns that contain names.
-module Unbound.Generics.LocallyNameless.Operations (aeq, freshen, swaps, bind, unbind) where
+module Unbound.Generics.LocallyNameless.Operations
+       (aeq
+       , freshen
+       , swaps
+       , bind
+       , unbind
+       , Embed(..)
+       , rebind
+       , unrebind
+       , unembed
+       ) where
 
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Bind
+import Unbound.Generics.LocallyNameless.Embed (Embed(..))
+import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.PermM
 
 -- | @'aeq' t1 t2@ returns @True@ iff @t1@ and @t2@ are alpha-equivalent terms.
@@ -41,3 +53,21 @@ unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 unbind (B p t) = do
   (p', _) <- freshen p
   return (p', open initialCtx p' t)
+
+-- | @'rebind' p1 p2@ is a smart constructor for 'Rebind'.  It
+-- captures the variables of pattern @p1@ that occur within @p2@ in
+-- addition to providing binding occurrences for all the variables of @p1@ and @p2@
+rebind :: (Alpha p1, Alpha p2) => p1 -> p2 -> Rebind p1 p2
+rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
+
+-- | @'unrebind' p@ is the elimination form for 'Rebind'. It is not
+-- monadic (unlike 'unbind') because a @Rebind@ pattern can only occur
+-- somewhere in a pattern position of a 'Bind', and therefore 'unbind'
+-- must have already been called and all names apropriately
+-- 'freshen'ed.
+unrebind :: (Alpha p1, Alpha p2) => Rebind p1 p2 -> (p1, p2)
+unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
+
+-- | @'unembed' p@ extracts the term embedded in the pattern @p@.
+unembed :: Embed t -> t
+unembed (Embed t) = t
