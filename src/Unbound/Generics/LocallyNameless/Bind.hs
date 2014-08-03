@@ -23,6 +23,12 @@ import Data.Monoid ((<>))
 
 import Unbound.Generics.LocallyNameless.Alpha
 
+-- | A term of type @'Bind' p t@ is a term that binds the free
+-- variable occurrences of the variables in pattern @p@ in the term
+-- @t@.  In the overall term, those variables are now bound. See also
+-- 'Unbound.Generics.LocallyNameless.Operations.bind' and
+-- 'Unbound.Generics.LocallyNameless.Operations.unbind' and
+-- 'Unbound.Generics.LocallyNameless.Operations.lunbind'
 data Bind p t = B p t
               deriving (Generic)
 

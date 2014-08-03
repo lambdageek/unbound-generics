@@ -76,10 +76,10 @@ incrLevelCtx ctx = ctx { ctxLevel = 1 + ctxLevel ctx }
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
 --
--- @@
+-- @
 --   inconsistentDisjointSet <> s == inconsistentDisjointSet
 --   s <> inconsistentDisjoinSet == inconsistentDisjointSet
--- @@
+-- @
 newtype DisjointSet a = DisjointSet (Maybe [a])
 
 instance Eq a => Monoid (DisjointSet a) where
@@ -92,15 +92,18 @@ instance Eq a => Monoid (DisjointSet a) where
 instance Foldable DisjointSet where
   foldMap summarize (DisjointSet ms) = foldMap (foldMap summarize) ms
 
+-- | Returns a @DisjointSet a@ that is the annihilator element for the 'Monoid' instance of 'DisjointSet'.
 inconsistentDisjointSet :: DisjointSet a
 inconsistentDisjointSet = DisjointSet Nothing
 
+-- | @singletonDisjointSet x@ a @DisjointSet a@ that contains the single element @x@
 singletonDisjointSet :: a -> DisjointSet a
 singletonDisjointSet x = DisjointSet (Just [x])
 
 disjointLists :: Eq a => [a] -> [a] -> Bool
 disjointLists xs ys = null (intersect xs ys)
 
+-- | @isConsistentDisjointSet@ returns @True@ iff the given disjoint set is not inconsistent.
 isConsistentDisjointSet :: DisjointSet a -> Bool
 isConsistentDisjointSet (DisjointSet Nothing) = False
 isConsistentDisjointSet _ = True
@@ -160,6 +163,8 @@ class (Show a) => Alpha a where
   default swaps' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> Perm AnyName -> a -> a
   swaps' ctx perm = to . gswaps ctx perm . from
 
+  -- | See 'Unbound.Generics.LocallyNameless.Operations.freshen'.  Rename the free variables
+  -- in the given term to be distinct from all other names seen in the monad @m@.
   freshen' :: Fresh m => AlphaCtx -> a -> m (a, Perm AnyName)
   default freshen'  :: (Generic a, GAlpha (Rep a), Fresh m) => AlphaCtx -> a -> m (a, Perm AnyName)
   freshen' ctx = liftM (first to) . gfreshen ctx . from

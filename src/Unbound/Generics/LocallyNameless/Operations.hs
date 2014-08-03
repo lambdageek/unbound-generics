@@ -36,7 +36,7 @@ aeq = aeq' initialCtx
 freshen :: (Alpha p, Fresh m) => p -> m (p, Perm AnyName)
 freshen = freshen' (patternCtx initialCtx)
 
--- Apply the given permutation of variable names to the given pattern.
+-- | Apply the given permutation of variable names to the given pattern.
 swaps :: Alpha p => Perm AnyName -> p -> p
 swaps = swaps' (patternCtx initialCtx)
 

@@ -60,6 +60,8 @@ import Control.Monad ((>=>))
 --   also be useful in general.
 newtype Perm a = Perm (Map a a)
 
+-- | @'permValid' p@ returns @True@ iff the perumation is /valid/: if
+-- each value in the range of the permutation is also a key.
 permValid :: Ord a => Perm a -> Bool
 permValid (Perm p) = all (\(_,v) -> M.member v p) (M.assocs p)
   -- a Map sends every key uniquely to a value by construction.  So if

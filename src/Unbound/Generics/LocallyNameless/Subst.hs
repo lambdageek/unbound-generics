@@ -14,7 +14,11 @@
              , ScopedTypeVariables
              , TypeOperators
  #-}
-module Unbound.Generics.LocallyNameless.Subst where
+module Unbound.Generics.LocallyNameless.Subst (
+  SubstName(..)
+  , SubstCoerce(..)
+  , Subst(..)
+  ) where
 
 import GHC.Generics
 
