@@ -154,7 +154,7 @@ class (Show a) => Alpha a where
   default namePatFind :: (Generic a, GAlpha (Rep a)) => a -> NamePatFind
   namePatFind = gnamePatFind . from
 
-  -- | See @Unbound.Generics.LocallyNameless.Operations.swaps@. Apply
+  -- | See 'Unbound.Generics.LocallyNameless.Operations.swaps'. Apply
   -- the given permutation of variable names to the given pattern.
   swaps' :: AlphaCtx -> Perm AnyName -> a -> a
   default swaps' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> Perm AnyName -> a -> a
