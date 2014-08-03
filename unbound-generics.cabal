@@ -20,6 +20,7 @@ library
   exposed-modules:     Unbound.Generics.LocallyNameless
                        Unbound.Generics.LocallyNameless.Name
                        Unbound.Generics.LocallyNameless.Fresh
+                       Unbound.Generics.LocallyNameless.LFresh
                        Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Bind
                        Unbound.Generics.LocallyNameless.Rebind

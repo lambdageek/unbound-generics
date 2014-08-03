@@ -12,6 +12,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , swaps
        , bind
        , unbind
+       , lunbind
        , Embed(..)
        , rebind
        , unrebind
@@ -21,6 +22,7 @@ module Unbound.Generics.LocallyNameless.Operations
 
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless.LFresh
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Embed (Embed(..))
@@ -36,6 +38,15 @@ aeq = aeq' initialCtx
 --   specifying how 'Name's were replaced.
 freshen :: (Alpha p, Fresh m) => p -> m (p, Perm AnyName)
 freshen = freshen' (patternCtx initialCtx)
+
+-- | \"Locally\" freshen a pattern, replacing all binding names with
+--   new names that are not already \"in scope\". The second argument
+--   is a continuation, which takes the renamed term and a permutation
+--   that specifies how the pattern has been renamed.  The resulting
+--   computation will be run with the in-scope set extended by the
+--   names just generated.
+lfreshen :: (Alpha p, LFresh m) => p -> (p -> Perm AnyName -> m b) -> m b
+lfreshen = lfreshen' (patternCtx initialCtx)
 
 -- | Apply the given permutation of variable names to the given pattern.
 swaps :: Alpha p => Perm AnyName -> p -> p
@@ -54,6 +65,19 @@ unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 unbind (B p t) = do
   (p', _) <- freshen p
   return (p', open initialCtx p' t)
+
+-- | @lunbind@ opens a binding in an 'LFresh' monad, ensuring that the
+--   names chosen for the binders are /locally/ fresh.  The components
+--   of the binding are passed to a /continuation/, and the resulting
+--   monadic action is run in a context extended to avoid choosing new
+--   names which are the same as the ones chosen for this binding.
+--
+--   For more information, see the documentation for the 'LFresh' type
+--   class.
+lunbind :: (LFresh m, Alpha p, Alpha t) => Bind p t -> ((p, t) -> m c) -> m c
+lunbind (B p t) cont =
+  lfreshen p (\x _ -> cont (x, open initialCtx x t))
+
 
 -- | @'rebind' p1 p2@ is a smart constructor for 'Rebind'.  It
 -- captures the variables of pattern @p1@ that occur within @p2@ in

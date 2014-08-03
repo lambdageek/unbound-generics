@@ -39,6 +39,7 @@ import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Fresh
+import Unbound.Generics.LocallyNameless.LFresh
 import Unbound.Generics.PermM
 
 -- | Some 'Alpha' operations need to record information about their
@@ -163,6 +164,12 @@ class (Show a) => Alpha a where
   default swaps' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> Perm AnyName -> a -> a
   swaps' ctx perm = to . gswaps ctx perm . from
 
+  -- | See 'Unbound.Generics.LocallyNameless.Operations.freshen'.
+  lfreshen' :: LFresh m => AlphaCtx -> a -> (a -> Perm AnyName -> m b) -> m b
+  default lfreshen' :: (LFresh m, Generic a, GAlpha (Rep a))
+                       => AlphaCtx -> a -> (a -> Perm AnyName -> m b) -> m b
+  lfreshen' ctx m cont = glfreshen ctx (from m) (cont . to)
+
   -- | See 'Unbound.Generics.LocallyNameless.Operations.freshen'.  Rename the free variables
   -- in the given term to be distinct from all other names seen in the monad @m@.
   freshen' :: Fresh m => AlphaCtx -> a -> m (a, Perm AnyName)
@@ -188,6 +195,8 @@ class GAlpha f where
   gswaps :: AlphaCtx -> Perm AnyName -> f a -> f a
   gfreshen :: Fresh m => AlphaCtx -> f a -> m (f a, Perm AnyName)
 
+  glfreshen :: LFresh m => AlphaCtx -> f a -> (f a -> Perm AnyName -> m b) -> m b
+  
 instance (Alpha c) => GAlpha (K1 i c) where
   gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
 
@@ -202,6 +211,8 @@ instance (Alpha c) => GAlpha (K1 i c) where
 
   gswaps ctx perm = K1 . swaps' ctx perm . unK1
   gfreshen ctx = liftM (first K1) . freshen' ctx . unK1
+
+  glfreshen ctx (K1 c) cont = lfreshen' ctx c (cont . K1)
 
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
@@ -218,6 +229,8 @@ instance GAlpha f => GAlpha (M1 i c f) where
   gswaps ctx perm = M1 . gswaps ctx perm . unM1
   gfreshen ctx = liftM (first M1) . gfreshen ctx . unM1
 
+  glfreshen ctx (M1 f) cont =
+    glfreshen ctx f (cont . M1)
 
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
@@ -234,6 +247,8 @@ instance GAlpha U1 where
   gswaps _ctx _perm _ = U1
   gfreshen _ctx _ = return (U1, mempty)
 
+  glfreshen _ctx _ cont = cont U1 mempty
+
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
 
@@ -248,6 +263,8 @@ instance GAlpha V1 where
 
   gswaps _ctx _perm _ = undefined
   gfreshen _ctx _ = return (undefined, mempty)
+
+  glfreshen _ctx _ cont = cont undefined mempty
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
@@ -276,6 +293,11 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     (f', perm1) <- gfreshen ctx (gswaps ctx perm2 f)
     return (f' :*: g', perm1 <> perm2)
 
+  glfreshen ctx (f :*: g) cont =
+    glfreshen ctx g $ \g' perm2 ->
+    glfreshen ctx (gswaps ctx perm2 f) $ \f' perm1 ->
+    cont (f' :*: g') (perm1 <> perm2)
+
 instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
   gaeq ctx  (R1 g1) (R1 g2) = gaeq ctx g1 g2
@@ -303,6 +325,11 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
 
   gfreshen ctx (L1 f) = liftM (first L1) (gfreshen ctx f)
   gfreshen ctx (R1 f) = liftM (first R1) (gfreshen ctx f)
+  
+  glfreshen ctx (L1 f) cont =
+    glfreshen ctx f (cont . L1)
+  glfreshen ctx (R1 g) cont =
+    glfreshen ctx g (cont . R1)
   
 
 -- ============================================================
@@ -352,6 +379,7 @@ instance Alpha Integer where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance Alpha Float where
   aeq' _ctx i j = i == j
@@ -397,6 +425,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance Alpha Bool
 
@@ -469,6 +498,13 @@ instance Typeable a => Alpha (Name a) where
       return (nm', single (AnyName nm) (AnyName nm'))
     else error "freshen' on a Name in term position"
 
+  lfreshen' ctx nm cont =
+    if not (isTermCtx ctx)
+    then do
+      nm' <- lfresh nm
+      avoid [AnyName nm'] $ cont nm' $ single (AnyName nm) (AnyName nm')
+    else error "lfreshen' on a Name in term position"
+
 instance Alpha AnyName where
   aeq' ctx x y =
     if x == y
@@ -495,6 +531,13 @@ instance Alpha AnyName where
     else do
       nm' <- fresh nm
       return (AnyName nm', single (AnyName nm) (AnyName nm'))
+
+  lfreshen' ctx (AnyName nm) cont =
+    if isTermCtx ctx
+    then error "LocallyNameless.lfreshen' on AnyName in Term mode"
+    else do
+      nm' <- lfresh nm
+      avoid [AnyName nm'] $ cont (AnyName nm') $ single (AnyName nm) (AnyName nm')
 
   open ctx b (AnyName nm) = AnyName (open ctx b nm)
 
