@@ -25,6 +25,7 @@ library
                        Unbound.Generics.LocallyNameless.Rebind
                        Unbound.Generics.LocallyNameless.Embed
                        Unbound.Generics.LocallyNameless.Operations
+                       Unbound.Generics.LocallyNameless.Unsafe
                        Unbound.Generics.PermM
                        Unbound.Generics.LocallyNameless.Subst
   -- other-modules:       
