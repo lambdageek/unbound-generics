@@ -22,7 +22,7 @@ import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Embed
 import Unbound.Generics.LocallyNameless.Bind
-
+import Unbound.Generics.LocallyNameless.Rebind
 
 -- | See 'isVar'
 data SubstName a b where
@@ -61,7 +61,7 @@ class Subst b a where
     else error $ "Cannot substitute for bound variable " ++ show n
 
 
-
+---- generic structural substitution.
 
 class GSubst b f where
   gsubst :: Name b -> b -> f c -> f c
@@ -85,17 +85,18 @@ instance (GSubst b f, GSubst b g) => GSubst b (f :+: g) where
   gsubst nm val (L1 f) = L1 $ gsubst nm val f
   gsubst nm val (R1 g) = R1 $ gsubst nm val g
 
-instance Subst b Int
-instance Subst b Bool
-instance Subst b ()
-instance Subst b Char
-instance Subst b Float
-instance Subst b Double
+-- these have a Generic instance, but
+-- it's self-refential (ie: Rep Int = D1 (C1 (S1 (Rec0 Int))))
+-- so our structural GSubst instances get stuck in an infinite loop.
+instance Subst b Int where subst _ _ = id
+instance Subst b Bool where subst _ _ = id
+instance Subst b () where subst _ _ = id
+instance Subst b Char where subst _ _ = id
+instance Subst b Float where subst _ _ = id
+instance Subst b Double where subst _ _ = id
 
--- huh, apparently There's no instance Generic Integer. 
-instance Subst b Integer where
-  isvar _ = Nothing
-  subst _ _ i = i
+-- huh, apparently there's no instance Generic Integer. 
+instance Subst b Integer where subst _ _ i = i
 
 instance (Subst c a, Subst c b) => Subst c (a,b)
 instance (Subst c a, Subst c b, Subst c d) => Subst c (a,b,d)
@@ -106,9 +107,11 @@ instance (Subst c a) => Subst c [a]
 instance (Subst c a) => Subst c (Maybe a)
 instance (Subst c a, Subst c b) => Subst c (Either a b)
 
-instance Generic a => Subst b (Name a)
+instance Generic a => Subst b (Name a) where subst _ _ = id
+instance Subst b AnyName where subst _ _ = id
 
 instance (Subst c a) => Subst c (Embed a)
 
 instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (Bind a b)
 
+instance (Subst c p1, Subst c p2) => Subst c (Rebind p1 p2)
