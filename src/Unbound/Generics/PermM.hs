@@ -46,6 +46,7 @@ module Unbound.Generics.PermM (
     Perm(..), permValid, single, compose, apply, support, isid, join, empty, restrict, mkPerm
   ) where
 
+import Prelude (Eq(..), Show(..), (.), ($), Monad(return), Ord(..), Maybe(..), otherwise, (&&), Bool(..), id, uncurry, Functor(..))
 import Data.Monoid
 import Data.List
 import Data.Map (Map)

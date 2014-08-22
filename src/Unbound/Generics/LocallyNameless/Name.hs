@@ -26,7 +26,7 @@ module Unbound.Generics.LocallyNameless.Name
        , AnyName(..)
        ) where
 
-import Data.Typeable (Typeable(..), gcast, typeOf)
+import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics (Generic)
 
 -- | An abstract datatype of names @Name a@ that stand for terms of

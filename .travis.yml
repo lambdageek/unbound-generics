@@ -1,5 +1,6 @@
 language: haskell
 ghc:
  - 7.6
-# don't try 7.8 yet, I don't feel like dealing with ifdefs for Typeable just now.
-# - 7.8 
+ - 7.8 
+
+

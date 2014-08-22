@@ -9,7 +9,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Unbound.Generics.LocallyNameless.Fresh where
 
-import Control.Applicative (Applicative)
+import Control.Applicative (Applicative, Alternative)
 import Control.Monad ()
 
 import Control.Monad.Identity
@@ -41,7 +41,7 @@ class Monad m => Fresh m where
 --   still globally unused, and increments the index every time it is
 --   asked for a fresh name.
 newtype FreshMT m a = FreshMT { unFreshMT :: St.StateT Integer m a }
-  deriving (Functor, Applicative, Monad, MonadPlus, MonadIO, MonadFix)
+  deriving (Functor, Applicative, Alternative, Monad, MonadPlus, MonadIO, MonadFix)
 
 -- | Run a 'FreshMT' computation (with the global index starting at zero).
 runFreshMT :: Monad m => FreshMT m a -> m a

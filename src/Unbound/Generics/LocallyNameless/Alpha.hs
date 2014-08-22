@@ -34,7 +34,7 @@ import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>))
 import Data.Ratio (Ratio)
-import Data.Typeable (Typeable(..), gcast)
+import Data.Typeable (Typeable, gcast)
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
