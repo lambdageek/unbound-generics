@@ -27,9 +27,11 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , incrLevelCtx
   ) where
 
+import Control.Applicative (Applicative(..), (<$>))
 import Control.Arrow (first)
 import Control.Monad (liftM)
 import Data.Function (on)
+import Data.Functor.Contravariant (Contravariant(..))
 import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>))
@@ -119,6 +121,12 @@ class (Show a) => Alpha a where
   default aeq' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Bool
   aeq' c = (gaeq c) `on` from
 
+  -- | See 'Unbound.Generics.LocallyNameless.Operations.fvAny'.
+  -- @@@ fvAny' :: AlphaCtx -> Fold a AnyName @@@
+  fvAny' :: (Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
+  default fvAny' :: (Generic a, GAlpha (Rep a), Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
+  fvAny' c nfn = fmap to . gfvAny c nfn . from
+
   -- | Replace free names by bound names.
   close :: Alpha b => AlphaCtx -> b -> a -> a
   default close :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
@@ -183,6 +191,9 @@ type NamePatFind = AnyName -> Either Integer Integer -- Left - names skipped ove
 -- | The "Generic" representation version of 'Alpha'
 class GAlpha f where
   gaeq :: AlphaCtx -> f a -> f a -> Bool
+
+  gfvAny :: (Contravariant g, Applicative g) => AlphaCtx -> (AnyName -> g AnyName) -> f a -> g (f a)
+
   gclose :: Alpha b => AlphaCtx -> b -> f a -> f a
   gopen :: Alpha b => AlphaCtx -> b -> f a -> f a
 
@@ -200,6 +211,8 @@ class GAlpha f where
 instance (Alpha c) => GAlpha (K1 i c) where
   gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
 
+  gfvAny ctx nfn = fmap K1 . fvAny' ctx nfn . unK1
+
   gclose ctx b = K1 . close ctx b . unK1
   gopen ctx b = K1 . open ctx b . unK1
 
@@ -216,6 +229,8 @@ instance (Alpha c) => GAlpha (K1 i c) where
 
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
+
+  gfvAny ctx nfn = fmap M1 . gfvAny ctx nfn . unM1
 
   gclose ctx b = M1 . gclose ctx b . unM1
   gopen ctx b = M1 . gopen ctx b . unM1
@@ -235,6 +250,8 @@ instance GAlpha f => GAlpha (M1 i c f) where
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
 
+  gfvAny _ctx _nfn _ = pure U1
+
   gclose _ctx _b _ = U1
   gopen _ctx _b _ = U1
 
@@ -251,6 +268,8 @@ instance GAlpha U1 where
 
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
+
+  gfvAny _ctx _nfn = pure
 
   gclose _ctx _b _ = undefined
   gopen _ctx _b _ = undefined
@@ -269,6 +288,9 @@ instance GAlpha V1 where
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
     gaeq ctx f1 f2 && gaeq ctx g1 g2
+
+  gfvAny ctx nfn (f :*: g) = (:*:) <$> gfvAny ctx nfn f
+                                   <*> gfvAny ctx nfn g
 
   gclose ctx b (f :*: g) = gclose ctx b f :*: gclose ctx b g
   gopen ctx b (f :*: g) = gopen ctx b f :*: gopen ctx b g
@@ -302,6 +324,9 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
   gaeq ctx  (R1 g1) (R1 g2) = gaeq ctx g1 g2
   gaeq _ctx _       _       = False
+
+  gfvAny ctx nfn (L1 f) = fmap L1 (gfvAny ctx nfn f)
+  gfvAny ctx nfn (R1 g) = fmap R1 (gfvAny ctx nfn g)
 
   gclose ctx b (L1 f) = L1 (gclose ctx b f)
   gclose ctx b (R1 g) = R1 (gclose ctx b g)
@@ -338,6 +363,8 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
 instance Alpha Int where
   aeq' _ctx i j = i == j
 
+  fvAny' _ctx _nfn i = pure i
+
   close _ctx _b i = i
   open _ctx _b i = i
 
@@ -353,6 +380,8 @@ instance Alpha Int where
 instance Alpha Char where
   aeq' _ctx i j = i == j
 
+  fvAny' _ctx _nfn i = pure i
+
   close _ctx _b i = i
   open _ctx _b i = i
 
@@ -367,6 +396,8 @@ instance Alpha Char where
 
 instance Alpha Integer where
   aeq' _ctx i j = i == j
+
+  fvAny' _ctx _nfn i = pure i
 
   close _ctx _b i = i
   open _ctx _b i = i
@@ -384,6 +415,8 @@ instance Alpha Integer where
 instance Alpha Float where
   aeq' _ctx i j = i == j
 
+  fvAny' _ctx _nfn i = pure i
+
   close _ctx _b i = i
   open _ctx _b i = i
 
@@ -399,6 +432,8 @@ instance Alpha Float where
 instance Alpha Double where
   aeq' _ctx i j = i == j
 
+  fvAny' _ctx _nfn i = pure i
+
   close _ctx _b i = i
   open _ctx _b i = i
 
@@ -413,6 +448,8 @@ instance Alpha Double where
 
 instance (Integral n, Alpha n) => Alpha (Ratio n) where
   aeq' _ctx i j = i == j
+
+  fvAny' _ctx _nfn i = pure i
 
   close _ctx _b i = i
   open _ctx _b i = i
@@ -447,6 +484,10 @@ instance Typeable a => Alpha (Name a) where
     then n1 == n2 -- in terms, better be the same name
     else True     -- in a pattern, names are always equivlent (since
                   -- they're both bound, so they can vary).
+
+  fvAny' ctx nfn nm = if isTermCtx ctx && isFreeName nm
+                      then contramap AnyName  (nfn (AnyName nm))
+                      else pure nm
 
   open ctx b a@(Bn l k) =
     if ctxMode ctx == Term && ctxLevel ctx == l
@@ -513,6 +554,10 @@ instance Alpha AnyName where
       -- in a term unequal variables are unequal, in a pattern it's
       -- ok.
       isTermCtx ctx
+
+  fvAny' ctx nfn n@(AnyName nm) = if isTermCtx ctx && isFreeName nm
+                                  then nfn n
+                                  else pure n
 
   isTerm _ = True
 

@@ -10,6 +10,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Embed where
 
+import Control.Applicative ((<$>))
 import Data.Monoid (mempty)
 import GHC.Generics (Generic)
 
@@ -50,6 +51,8 @@ instance Alpha t => Alpha (Embed t) where
     else return (p, mempty)
 
   aeq' ctx (Embed x) (Embed y) = aeq' (termCtx ctx) x y
+
+  fvAny' ctx afa (Embed x) = Embed <$> fvAny' (termCtx ctx) afa x
 
   close ctx b (Embed x) =
     if isTermCtx ctx

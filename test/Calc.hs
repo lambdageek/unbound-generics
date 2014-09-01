@@ -13,6 +13,7 @@ import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
 
 -- variables will range over expressions
 type Var = Name Expr
@@ -38,6 +39,12 @@ instance Alpha LetStarBinds
 
 mkVar :: String -> Var
 mkVar = s2n
+
+anyFreeVarList :: Alpha a => a -> [AnyName]
+anyFreeVarList = toListOf fvAny
+
+freeVarList :: (Alpha a, Typeable b) => a -> [Name b]
+freeVarList = toListOf fv
 
 -- smart constructor for Let
 mkLet :: [(Var, Expr)] -> Expr -> Expr
@@ -144,3 +151,15 @@ ex5 = let
 
 ex5_ans :: Expr
 ex5_ans = C 412
+
+ex6 :: [Expr]
+ex6 = [V (mkVar "x"), V (mkVar "z"), mkLet [(mkVar "y", C 1)] (V (mkVar "y"))]
+
+ex6_ans :: [AnyName]
+ex6_ans = [AnyName (mkVar "x"), AnyName (mkVar "z")]
+
+ex7 :: [Expr]
+ex7 = [V (mkVar "x"), V (mkVar "z"), mkLet [(mkVar "y", C 1)] (V (mkVar "y"))]
+
+ex7_ans :: [Var]
+ex7_ans = [mkVar "x", mkVar "z"]

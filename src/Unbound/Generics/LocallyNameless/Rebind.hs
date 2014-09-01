@@ -12,6 +12,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Rebind where
 
+import Control.Applicative ((<*>), (<$>))
 import Data.Monoid ((<>))
 import GHC.Generics
 
@@ -67,6 +68,9 @@ instance (Alpha p1, Alpha p2) => Alpha (Rebind p1 p2) where
   aeq' ctx (Rebnd p1 p2) (Rebnd q1 q2) =
     -- XXX TODO: Unbound had (aeq' ctx p2 q2) here.  But that doesn't seem right.
     aeq' ctx p1 q1 && aeq' (incrLevelCtx ctx) p2 q2
+
+  fvAny' ctx afa (Rebnd p1 p2) = Rebnd <$> fvAny' ctx afa p1
+                                       <*> fvAny' (incrLevelCtx ctx) afa p2
 
   open ctx b (Rebnd p1 p2) = Rebnd (open ctx b p1) (open (incrLevelCtx ctx) b p2)
   close ctx b (Rebnd p1 p2) = Rebnd (close ctx b p1) (close (incrLevelCtx ctx) b p2)

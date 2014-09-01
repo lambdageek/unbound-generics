@@ -6,7 +6,10 @@
 -- Stability  : experimental
 --
 -- Global freshness monad.
-{-# LANGUAGE CPP, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE CPP, GeneralizedNewtypeDeriving,
+             FlexibleInstances, MultiParamTypeClasses,
+             UndecidableInstances
+  #-}
 -- (we expect deprecation warnings about Control.Monad.Trans.Error)
 {-# OPTIONS_GHC -Wwarn #-}
 module Unbound.Generics.LocallyNameless.Fresh where
@@ -27,6 +30,12 @@ import Control.Monad.Trans.State.Lazy as Lazy
 import Control.Monad.Trans.State.Strict as Strict
 import Control.Monad.Trans.Writer.Lazy as Lazy
 import Control.Monad.Trans.Writer.Strict as Strict
+
+import qualified Control.Monad.Cont.Class as CC
+import qualified Control.Monad.Error.Class as EC
+import qualified Control.Monad.State.Class as StC
+import qualified Control.Monad.Reader.Class as RC
+import qualified Control.Monad.Writer.Class as WC
 
 import Data.Monoid (Monoid)
 
@@ -56,6 +65,30 @@ runFreshMT m = contFreshMT m 0
 --   generation.
 contFreshMT :: Monad m => FreshMT m a -> Integer -> m a
 contFreshMT (FreshMT m) = St.evalStateT m
+
+instance MonadTrans FreshMT where
+  lift = FreshMT . lift
+
+instance CC.MonadCont m => CC.MonadCont (FreshMT m) where
+  callCC c = FreshMT $ CC.callCC (unFreshMT . (\k -> c (FreshMT . k)))
+
+instance EC.MonadError e m => EC.MonadError e (FreshMT m) where
+  throwError = lift . EC.throwError
+  catchError m h = FreshMT $ EC.catchError (unFreshMT m) (unFreshMT . h)
+
+instance StC.MonadState s m => StC.MonadState s (FreshMT m) where
+  get = lift StC.get
+  put = lift . StC.put
+
+instance RC.MonadReader r m => RC.MonadReader r (FreshMT m) where
+  ask   = lift RC.ask
+  local f = FreshMT . RC.local f . unFreshMT
+
+instance WC.MonadWriter w m => WC.MonadWriter w (FreshMT m) where
+  tell   = lift . WC.tell
+  listen = FreshMT . WC.listen . unFreshMT
+  pass   = FreshMT . WC.pass . unFreshMT
+
 
 instance Monad m => Fresh (FreshMT m) where
   fresh (Fn s _) = FreshMT $ do
@@ -89,10 +122,6 @@ instance (Monoid w, Fresh m) => Fresh (Lazy.WriterT w m) where
 
 instance (Monoid w, Fresh m) => Fresh (Strict.WriterT w m) where
   fresh = lift . fresh
-
-instance MonadTrans FreshMT where
-  lift = FreshMT . lift
-
 
 ------------------------------------------------------------
 -- FreshM monad

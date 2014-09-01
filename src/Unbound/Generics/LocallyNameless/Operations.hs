@@ -6,13 +6,21 @@
 -- Stability  : experimental
 --
 -- Operations on terms and patterns that contain names.
+{-# LANGUAGE RankNTypes, ScopedTypeVariables #-}
 module Unbound.Generics.LocallyNameless.Operations
-       (aeq
+       (-- * Equivalence, free variables, freshness
+         aeq
+       , fvAny
+       , fv
        , freshen
        , swaps
+         -- * Binding, unbinding
        , bind
        , unbind
        , lunbind
+       , unbind2
+       , unbind2Plus
+         -- * Rebinding, embedding
        , Embed(..)
        , rebind
        , unrebind
@@ -20,6 +28,11 @@ module Unbound.Generics.LocallyNameless.Operations
        , unembed
        ) where
 
+import Control.Applicative (Applicative)
+import Control.Monad (MonadPlus(mzero))
+import Data.Functor.Contravariant (Contravariant)
+import Data.Monoid ((<>))
+import Data.Typeable (Typeable, cast)
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.LFresh
@@ -27,11 +40,31 @@ import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Embed (Embed(..))
 import Unbound.Generics.LocallyNameless.Rebind
+import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, justFiltered)
 import Unbound.Generics.PermM
 
 -- | @'aeq' t1 t2@ returns @True@ iff @t1@ and @t2@ are alpha-equivalent terms.
 aeq :: Alpha a => a -> a -> Bool
 aeq = aeq' initialCtx
+
+-- | @'fvAny' t@ returns the free variables of the term @t@.
+--
+-- @@@
+--  fvAny :: Alpha a => a -> Fold a AnyName
+-- @@@
+fvAny :: (Alpha a, Contravariant f, Applicative f) => (AnyName -> f AnyName) -> a -> f a
+fvAny = fvAny' initialCtx
+
+-- | @'fv' t@ returns the free @b@ variables of term @t@.
+--
+-- @@@
+--  fv :: (Alpha a, Typeable b) => a -> Fold a (Name b)
+-- @@@
+fv :: forall a f b . (Alpha a, Typeable b, Contravariant f, Applicative f)
+      => (Name b -> f (Name b)) -> a -> f a
+fv = fvAny . justFiltered f
+  where f :: AnyName -> Maybe (Name b)
+        f (AnyName n) = cast n
 
 -- | Freshen a pattern by replacing all old binding 'Name's with new
 --   fresh 'Name's, returning a new pattern and a @'Perm' 'Name'@
@@ -77,6 +110,30 @@ unbind (B p t) = do
 lunbind :: (LFresh m, Alpha p, Alpha t) => Bind p t -> ((p, t) -> m c) -> m c
 lunbind (B p t) cont =
   lfreshen p (\x _ -> cont (x, open initialCtx x t))
+
+
+-- | Simultaneously unbind two patterns in two terms, returning 'Nothing' if
+-- the two patterns don't bind the same number of variables.
+unbind2 :: (Fresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2)
+           => Bind p1 t1
+           -> Bind p2 t2
+           -> m (Maybe (p1, t1, p2, t2))
+unbind2 (B p1 t1) (B p2 t2) = do
+      case mkPerm (toListOf fvAny p2) (toListOf fvAny p1) of
+         Just pm -> do
+           (p1', pm') <- freshen p1
+           return $ Just (p1', open initialCtx p1' t1,
+                          swaps (pm' <> pm) p2, open initialCtx p1' t2)
+         Nothing -> return Nothing
+
+
+-- | Simultaneously unbind two patterns in two terms, returning 'mzero' if
+-- the patterns don't bind the same number of variables.
+unbind2Plus :: (MonadPlus m, Fresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2)
+         => Bind p1 t1
+         -> Bind p2 t2
+         -> m (p1, t1, p2, t2)
+unbind2Plus bnd bnd' = maybe mzero return =<< unbind2 bnd bnd'
 
 
 -- | @'rebind' p1 p2@ is a smart constructor for 'Rebind'.  It

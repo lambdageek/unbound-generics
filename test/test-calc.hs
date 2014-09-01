@@ -32,6 +32,13 @@ test_ex4 = TestCase $ assertBool "example 4 (let scoping)" (runWhnf emptyEnv ex4
 test_ex5 :: Test
 test_ex5 = TestCase $ assertBool "example 5 (let* scoping)" (runWhnf emptyEnv ex5 `aeq` Just ex5_ans)
 
+test_ex6 :: Test
+test_ex6 = TestCase $ assertBool "example 6 (free variables)" (anyFreeVarList ex6 `aeq` ex6_ans)
+
+test_ex7 :: Test
+test_ex7 = TestCase $ assertBool "example 7 (sorted free variables)" (freeVarList ex7 `aeq` ex7_ans)
+
+
 main :: IO ()
 main = do
   result <- runTestTT $ TestList [test_ex1
@@ -40,6 +47,8 @@ main = do
                                  , test_ex3
                                  , test_ex4
                                  , test_ex5
+                                 , test_ex6
+                                 , test_ex7
                             ]
   if failures result > 0
     then fail "Some tests failed!"

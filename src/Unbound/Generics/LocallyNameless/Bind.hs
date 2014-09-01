@@ -17,9 +17,10 @@ module Unbound.Generics.LocallyNameless.Bind (
   Bind(..)
   ) where
 
-import GHC.Generics (Generic)
-
+import Control.Applicative (Applicative(..), (<$>))
 import Data.Monoid ((<>))
+
+import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless.Alpha
 
@@ -44,6 +45,9 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
   aeq' ctx (B p1 t1) (B p2 t2) =
     aeq' (patternCtx ctx) p1 p2
     && aeq' (incrLevelCtx ctx) t1 t2
+
+  fvAny' ctx nfn (B p t) = B <$> fvAny' (patternCtx ctx) nfn p
+                             <*> fvAny' (incrLevelCtx ctx) nfn t
 
   isPat _ = inconsistentDisjointSet
 
