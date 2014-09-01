@@ -65,6 +65,15 @@ instance (Alpha p1, Alpha p2) => Alpha (Rebind p1 p2) where
       (p2', perm2) <- freshen' (incrLevelCtx ctx) (swaps' (incrLevelCtx ctx) perm1 p2)
       return (Rebnd p1' p2', perm1 <> perm2)
 
+  lfreshen' ctx (Rebnd p q) cont =
+    if isTermCtx ctx
+    then error "lfreshen' on Rebind in Term mode"
+    else
+      lfreshen' ctx p $ \ p' pm1 ->
+      lfreshen' (incrLevelCtx ctx) (swaps' (incrLevelCtx ctx) pm1 q) $ \ q' pm2 ->
+      cont (Rebnd p' q') (pm1 <> pm2)
+
+
   aeq' ctx (Rebnd p1 p2) (Rebnd q1 q2) =
     -- XXX TODO: Unbound had (aeq' ctx p2 q2) here.  But that doesn't seem right.
     aeq' ctx p1 q1 && aeq' (incrLevelCtx ctx) p2 q2

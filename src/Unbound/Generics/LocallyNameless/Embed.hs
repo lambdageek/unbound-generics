@@ -10,7 +10,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Embed where
 
-import Control.Applicative ((<$>))
+import Control.Applicative (pure, (<$>))
 import Data.Monoid (mempty)
 import GHC.Generics (Generic)
 
@@ -50,9 +50,18 @@ instance Alpha t => Alpha (Embed t) where
     then error "LocallyNameless.freshen' called on a term"
     else return (p, mempty)
 
+  lfreshen' ctx p cont =
+    if isTermCtx ctx
+    then error "LocallyNameless.lfreshen' called on a term"
+    else cont p mempty
+
+
   aeq' ctx (Embed x) (Embed y) = aeq' (termCtx ctx) x y
 
-  fvAny' ctx afa (Embed x) = Embed <$> fvAny' (termCtx ctx) afa x
+  fvAny' ctx afa ex@(Embed x) =
+    if isTermCtx ctx
+    then pure ex
+    else Embed <$> fvAny' (termCtx ctx) afa x
 
   close ctx b (Embed x) =
     if isTermCtx ctx
