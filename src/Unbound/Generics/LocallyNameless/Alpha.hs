@@ -376,6 +376,7 @@ instance Alpha Int where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance Alpha Char where
   aeq' _ctx i j = i == j
@@ -393,6 +394,7 @@ instance Alpha Char where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance Alpha Integer where
   aeq' _ctx i j = i == j
@@ -428,6 +430,7 @@ instance Alpha Float where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance Alpha Double where
   aeq' _ctx i j = i == j
@@ -445,6 +448,7 @@ instance Alpha Double where
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
+  lfreshen' _ctx i cont = cont i mempty
 
 instance (Integral n, Alpha n) => Alpha (Ratio n) where
   aeq' _ctx i j = i == j
