@@ -13,6 +13,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , fvAny
        , fv
        , freshen
+       , lfreshen
        , swaps
          -- * Binding, unbinding
        , bind
