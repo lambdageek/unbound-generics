@@ -7,7 +7,7 @@
 --
 -- | Some utilities for working with Folds.
 {-# LANGUAGE RankNTypes #-}
-module Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, filtered, justFiltered) where
+module Unbound.Generics.LocallyNameless.Internal.Fold (Fold, Traversal', toListOf, filtered, justFiltered) where
 
 import Control.Applicative
 import Data.Maybe (fromJust)

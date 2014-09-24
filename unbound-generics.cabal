@@ -2,10 +2,22 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                unbound-generics
-version:             0.0.0.1
+version:             0.0.0.90
 synopsis:            Reimplementation of Unbound using GHC Generics
--- description:         
+description:         Specify the binding structure of your data type with an
+                     expressive set of type combinators, and unbound-generics
+                     handles the rest!  Automatically derives
+                     alpha-equivalence, free variable calculation,
+                     capture-avoiding substitution, and more. See
+                     @Unbound.Generics.LocallyNameless@ to get started.
+                     .
+                     This is an independent re-implementation of <http://hackage.haskell.org/package/unbound Unbound>
+                     but using <http://www.haskell.org/ghc/docs/latest/html/libraries/base-4.7.0.1/GHC-Generics.html GHC.Generics>
+                     instead of <http://http://hackage.haskell.org/package/RepLib RepLib>.
+                     See the accompanying README for some porting notes.
+                     
 homepage:            http://github.com/lambdageek/unbound-generics
+bug-reports:         http://github.com/lambdageek/unbound-generics/issues
 license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
@@ -13,7 +25,9 @@ maintainer:          aleksey@lambdageek.org
 copyright:           (c) 2014, Aleksey Kliger
 category:            Language
 build-type:          Simple
--- extra-source-files:  
+extra-source-files:  examples/*.hs,
+                     README.md,
+                     Changelog.md
 cabal-version:       >=1.10
 
 library
@@ -39,7 +53,7 @@ library
                        contravariant >= 0.5
   hs-source-dirs:      src
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror
+  ghc-options:         -Wall
 
 Test-Suite test-calc
   type:                exitcode-stdio-1.0
@@ -50,7 +64,7 @@ Test-Suite test-calc
                        unbound-generics
   hs-source-dirs:      test
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror
+  ghc-options:         -Wall
 
 Test-Suite test-parallelreduction
   type:                exitcode-stdio-1.0
@@ -58,8 +72,12 @@ Test-Suite test-parallelreduction
   other-modules:       ParallelReduction
   build-depends:       base,
                        HUnit == 1.2.*,
-                       mtl == 2.1.*,
+                       mtl >= 2.1,
                        unbound-generics
   hs-source-dirs:      test
   default-language:    Haskell2010
-  ghc-options:         -Wall -Werror
+  ghc-options:         -Wall
+
+source-repository head
+  type:                git
+  location:            git://github.com/lambdageek/unbound-generics.git

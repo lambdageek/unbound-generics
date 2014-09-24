@@ -19,6 +19,8 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , singletonDisjointSet
   , isConsistentDisjointSet
   -- * Implementation details
+  , NthPatFind
+  , NamePatFind
   , AlphaCtx
   , initialCtx
   , patternCtx
@@ -80,8 +82,8 @@ incrLevelCtx ctx = ctx { ctxLevel = 1 + ctxLevel ctx }
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
 --
 -- @
---   inconsistentDisjointSet <> s == inconsistentDisjointSet
---   s <> inconsistentDisjoinSet == inconsistentDisjointSet
+--   inconsistentDisjointSet \<> s == inconsistentDisjointSet
+--   s \<> inconsistentDisjoinSet == inconsistentDisjointSet
 -- @
 newtype DisjointSet a = DisjointSet (Maybe [a])
 
@@ -156,7 +158,7 @@ class (Show a) => Alpha a where
 
   -- | If @a@ is a pattern, finds the @n@th name in the pattern
   -- (starting from zero), returning the number of names encountered
-  -- in not found.
+  -- if not found.
   nthPatFind :: a -> NthPatFind
   default nthPatFind :: (Generic a, GAlpha (Rep a)) => a -> NthPatFind
   nthPatFind = gnthPatFind . from
@@ -184,7 +186,14 @@ class (Show a) => Alpha a where
   default freshen'  :: (Generic a, GAlpha (Rep a), Fresh m) => AlphaCtx -> a -> m (a, Perm AnyName)
   freshen' ctx = liftM (first to) . gfreshen ctx . from
 
+-- | The result of @'nthPatFind' a i@ is @Left k@ where @k@ is the
+-- number of names in pattern @a@ with @k < i@ or @Right x@ where @x@
+-- is the @i@th name in @a@
 type NthPatFind = Integer -> Either Integer AnyName
+
+-- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
+-- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
+-- in @a@
 type NamePatFind = AnyName -> Either Integer Integer -- Left - names skipped over
                                                      -- Right - index of the name we found
 

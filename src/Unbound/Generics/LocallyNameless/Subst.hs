@@ -5,7 +5,35 @@
 -- Maintainer : Aleksey Kliger
 -- Stability  : experimental
 --
--- A typeclass for types that may participate in substitution
+-- A typeclass for types that may participate in capture-avoiding substitution
+--
+-- The minimal definition is empty, provided your type is an instance of 'GHC.Generics.Generic'
+-- 
+-- @
+-- type Var = Name Factor
+-- data Expr = SumOf [Summand]
+--           deriving (Show, Generic)
+-- data Summand = ProductOf [Factor]
+--           deriving (Show, Generic)
+-- instance Subst Var Expr
+-- instance Subst Var Summand
+-- @
+-- 
+-- The default instance just propagates the substitution into the constituent factors.
+-- 
+-- If you identify the variable occurrences by implementing the 'isvar' function, the derived 'subst' function
+-- will be able to substitute a factor for a variable.
+-- 
+-- @
+-- data Factor = V Var
+--             | C Int
+--             | Subexpr Expr
+--           deriving (Show, Generic)
+-- instance Subst Var Factor where
+--   isvar (V v) = Just (SubstName v)
+--   isvar _     = Nothing
+-- @
+--
 {-# LANGUAGE DefaultSignatures
              , FlexibleContexts
              , FlexibleInstances

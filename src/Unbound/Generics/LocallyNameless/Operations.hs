@@ -16,15 +16,17 @@ module Unbound.Generics.LocallyNameless.Operations
        , lfreshen
        , swaps
          -- * Binding, unbinding
+       , Bind
        , bind
        , unbind
        , lunbind
        , unbind2
        , unbind2Plus
          -- * Rebinding, embedding
-       , Embed(..)
+       , Rebind
        , rebind
        , unrebind
+       , Embed(..)
        , embed
        , unembed
        ) where
@@ -50,17 +52,17 @@ aeq = aeq' initialCtx
 
 -- | @'fvAny' t@ returns the free variables of the term @t@.
 --
--- @@@
---  fvAny :: Alpha a => a -> Fold a AnyName
--- @@@
+-- @
+--   fvAny :: Alpha a => a -> Fold a AnyName
+-- @
 fvAny :: (Alpha a, Contravariant f, Applicative f) => (AnyName -> f AnyName) -> a -> f a
 fvAny = fvAny' initialCtx
 
 -- | @'fv' t@ returns the free @b@ variables of term @t@.
 --
--- @@@
+-- @
 --  fv :: (Alpha a, Typeable b) => a -> Fold a (Name b)
--- @@@
+-- @
 fv :: forall a f b . (Alpha a, Typeable b, Contravariant f, Applicative f)
       => (Name b -> f (Name b)) -> a -> f a
 fv = fvAny . justFiltered f

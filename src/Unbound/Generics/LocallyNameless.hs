@@ -5,6 +5,8 @@
 -- Maintainer : Aleksey Kliger
 -- Stability  : experimental
 --
+--
+-- See 'Alpha', 'Bind', "Unbound.Generics.LocallyNameless.Operations" to get started. 
 module Unbound.Generics.LocallyNameless (
   module Unbound.Generics.LocallyNameless.Alpha,
   module Unbound.Generics.LocallyNameless.Name,
