@@ -82,9 +82,9 @@ freshen = freshen' (patternCtx initialCtx)
 lfreshen :: (Alpha p, LFresh m) => p -> (p -> Perm AnyName -> m b) -> m b
 lfreshen = lfreshen' (patternCtx initialCtx)
 
--- | Apply the given permutation of variable names to the given pattern.
-swaps :: Alpha p => Perm AnyName -> p -> p
-swaps = swaps' (patternCtx initialCtx)
+-- | Apply the given permutation of variable names to the given term.
+swaps :: Alpha t => Perm AnyName -> t -> t
+swaps = swaps' initialCtx
 
   
 -- | @'bind' p t@ closes over the variables of pattern @p@ in the term @t@
