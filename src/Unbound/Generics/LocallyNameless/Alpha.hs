@@ -557,7 +557,7 @@ instance Alpha AnyName where
     else
       -- in a term unequal variables are unequal, in a pattern it's
       -- ok.
-      isTermCtx ctx
+      not (isTermCtx ctx)
 
   fvAny' ctx nfn n@(AnyName nm) = if isTermCtx ctx && isFreeName nm
                                   then nfn n
