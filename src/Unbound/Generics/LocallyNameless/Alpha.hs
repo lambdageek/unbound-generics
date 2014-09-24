@@ -258,7 +258,7 @@ instance GAlpha U1 where
   gisPat _ = mempty
   gisTerm _ = True
 
-  gnthPatFind _ _i = Left 0
+  gnthPatFind _ = Left
   gnamePatFind _ _ = Left 0
 
   gswaps _ctx _perm _ = U1
@@ -277,7 +277,7 @@ instance GAlpha V1 where
   gisPat _ = mempty
   gisTerm _ = False
 
-  gnthPatFind _ _i = Left 0
+  gnthPatFind _ = Left
   gnamePatFind _ _ = Left 0
 
   gswaps _ctx _perm _ = undefined
