@@ -21,6 +21,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , unbind
        , lunbind
        , unbind2
+       , lunbind2
        , unbind2Plus
          -- * Rebinding, embedding
        , Rebind
@@ -129,6 +130,22 @@ unbind2 (B p1 t1) (B p2 t2) = do
                           swaps (pm' <> pm) p2, open initialCtx p1' t2)
          Nothing -> return Nothing
 
+-- | Simultaneously 'lunbind' two patterns in two terms in the 'LFresh' monad,
+-- passing @Just (p1, t1, p2, t2)@ to the continuation such that the patterns
+-- are permuted such that they introduce the same free names, or 'Nothing' if
+-- the number of variables differs.
+lunbind2 :: (LFresh m, Alpha p1, Alpha p2, Alpha t1, Alpha t2)
+            => Bind p1 t1
+            -> Bind p2 t2
+            -> (Maybe (p1, t1, p2, t2) -> m c)
+            -> m c
+lunbind2 (B p1 t1) (B p2 t2) cont =
+  case mkPerm (toListOf fvAny p2) (toListOf fvAny p1) of
+    Just pm ->
+      lfreshen p1 $ \p1' pm' ->
+      cont $ Just (p1', open initialCtx p1' t1,
+                   swaps (pm' <> pm) p2, open initialCtx p1' t2)
+    Nothing -> cont Nothing
 
 -- | Simultaneously unbind two patterns in two terms, returning 'mzero' if
 -- the patterns don't bind the same number of variables.
