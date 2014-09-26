@@ -16,5 +16,5 @@ For the most part, I tried to keep the same methods with the same signatures.  H
 
 2. `isPat :: Alpha t => t -> DisjointSet AnyName`
 
-   You should olnly notice this if you're implementing an instance of `Alpha` by hand (rather than by using the default
+   You should only notice this if you're implementing an instance of `Alpha` by hand (rather than by using the default
    generic instance).  The original `unbound` returned a `Maybe [AnyName]` here with the same interpretation as `DisjointSet`: `Nothing` means an inconsistency was encountered, or `Just` the free variables of the pattern.

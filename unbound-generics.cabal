@@ -13,7 +13,7 @@ description:         Specify the binding structure of your data type with an
                      .
                      This is an independent re-implementation of <http://hackage.haskell.org/package/unbound Unbound>
                      but using <http://www.haskell.org/ghc/docs/latest/html/libraries/base-4.7.0.1/GHC-Generics.html GHC.Generics>
-                     instead of <http://http://hackage.haskell.org/package/RepLib RepLib>.
+                     instead of <http://hackage.haskell.org/package/RepLib RepLib>.
                      See the accompanying README for some porting notes.
                      
 homepage:            http://github.com/lambdageek/unbound-generics
