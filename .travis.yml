@@ -1,4 +1,5 @@
 language: haskell
+script: cabal configure --enable-tests --constraint 'optparse-applicative == 0.10.0'  && cabal build && cabal test
 ghc:
  - 7.6
  - 7.8 
