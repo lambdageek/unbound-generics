@@ -62,10 +62,13 @@ Test-Suite test-unbound-generics
                        TestCalc
                        ParallelReduction
                        TestParallelReduction
+                       PropOpenClose
   build-depends:       base,
                        mtl,
                        tasty,
                        tasty-hunit,
+                       tasty-quickcheck,
+                       QuickCheck >= 2.7 && < 3,
                        unbound-generics
   hs-source-dirs:      test
   default-language:    Haskell2010
