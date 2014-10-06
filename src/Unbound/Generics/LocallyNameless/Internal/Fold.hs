@@ -5,9 +5,11 @@
 -- Maintainer : Aleksey Kliger
 -- Stability  : experimental
 --
--- | Some utilities for working with Folds.
+-- Some utilities for working with Folds.
+--
+-- If you are using <http://hackage.haskell.org/package/lens lens>, you don't need this module.
 {-# LANGUAGE RankNTypes #-}
-module Unbound.Generics.LocallyNameless.Internal.Fold (Fold, Traversal', toListOf, filtered, justFiltered) where
+module Unbound.Generics.LocallyNameless.Internal.Fold (Fold, Traversal', toListOf, filtered, justFiltered, foldMapOf) where
 
 import Control.Applicative
 import Data.Maybe (fromJust)

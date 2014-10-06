@@ -124,7 +124,10 @@ class (Show a) => Alpha a where
   aeq' c = (gaeq c) `on` from
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.fvAny'.
-  -- @@@ fvAny' :: AlphaCtx -> Fold a AnyName @@@
+  --
+  -- @
+  --  fvAny' :: Fold a AnyName
+  -- @
   fvAny' :: (Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
   default fvAny' :: (Generic a, GAlpha (Rep a), Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
   fvAny' c nfn = fmap to . gfvAny c nfn . from

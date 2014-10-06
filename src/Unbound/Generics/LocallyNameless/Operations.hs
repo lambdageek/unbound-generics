@@ -51,18 +51,18 @@ import Unbound.Generics.PermM
 aeq :: Alpha a => a -> a -> Bool
 aeq = aeq' initialCtx
 
--- | @'fvAny' t@ returns the free variables of the term @t@.
+-- | @'fvAny'@ returns a fold over any names in a term @a@.
 --
 -- @
---   fvAny :: Alpha a => a -> Fold a AnyName
+--   fvAny :: Alpha a => Fold a AnyName
 -- @
 fvAny :: (Alpha a, Contravariant f, Applicative f) => (AnyName -> f AnyName) -> a -> f a
 fvAny = fvAny' initialCtx
 
--- | @'fv' t@ returns the free @b@ variables of term @t@.
+-- | @'fv'@ returns the free @b@ variables of term @a@.
 --
 -- @
---  fv :: (Alpha a, Typeable b) => a -> Fold a (Name b)
+--  fv :: (Alpha a, Typeable b) => Fold a (Name b)
 -- @
 fv :: forall a f b . (Alpha a, Typeable b, Contravariant f, Applicative f)
       => (Name b -> f (Name b)) -> a -> f a

@@ -9,7 +9,7 @@ This is a reimplementation of (parts of) [unbound](http://hackage.haskell.org/pa
 
 For the most part, I tried to keep the same methods with the same signatures.  However there are a few differences.
 
-1. `fv :: Alpha t => t -> Fold t (Name n)`
+1. `fv :: Alpha t => Fold t (Name n)`
 
    The `fv` method returns a `Fold` (in the sense of the [lens](http://hackage.haskell.org/package/lens) library),
    rather than an `Unbound.Util.Collection` instance.  That means you will generally have to write `toListOf fv t` or some    other summary operation.
