@@ -31,12 +31,10 @@ import Unbound.Generics.LocallyNameless.Alpha
 --
 -- @
 -- type Var = Name Expr
--- data Lets = EmptyLets
---           | Bind (Rebind (Var, Embed Expr) Lets)
+-- data Lets = EmptyLs
+--           | ConsLs (Rebind (Var, Embed Expr) Lets)
 -- data Expr = ...
---           | LetStar { letStarBindings :: Lets
---                     , letStarBody :: Expr
---                     }
+--           | LetStar (Bind Lets Expr)
 --           | ...
 -- @
 data Rebind p1 p2 = Rebnd p1 p2
