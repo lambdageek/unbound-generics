@@ -30,6 +30,14 @@ module Unbound.Generics.LocallyNameless.Operations
        , Embed(..)
        , embed
        , unembed
+         -- * Recursive bindings
+       , Rec
+       , Unbound.Generics.LocallyNameless.Rec.rec
+       , Unbound.Generics.LocallyNameless.Rec.unrec
+       , TRec(..)
+       , trec
+       , untrec
+       , luntrec
        ) where
 
 import Control.Applicative (Applicative)
@@ -44,6 +52,7 @@ import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Embed (Embed(..))
 import Unbound.Generics.LocallyNameless.Rebind
+import Unbound.Generics.LocallyNameless.Rec
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, justFiltered)
 import Unbound.Generics.PermM
 
@@ -177,3 +186,20 @@ embed = Embed
 -- | @'unembed' p@ extracts the term embedded in the pattern @p@.
 unembed :: Embed t -> t
 unembed (Embed t) = t
+
+-- | Constructor for recursive abstractions.
+trec :: Alpha p => p -> TRec p
+trec p = TRec (bind (rec p) ())
+
+-- | Destructor for recursive abstractions which picks globally fresh
+--   names for the binders.
+untrec :: (Alpha p, Fresh m) => TRec p -> m p
+untrec (TRec b) = do
+  (p, ()) <- unbind b
+  return (unrec p)
+
+-- | Destructor for recursive abstractions which picks /locally/ fresh
+--   names for binders (see 'LFresh').
+luntrec :: (Alpha p, LFresh m) => TRec p -> m p
+luntrec (TRec b) =
+  lunbind b $ \(p, ()) -> return (unrec p)

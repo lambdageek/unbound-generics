@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                unbound-generics
-version:             0.0.1
+version:             0.0.2
 synopsis:            Reimplementation of Unbound using GHC Generics
 description:         Specify the binding structure of your data type with an
                      expressive set of type combinators, and unbound-generics
@@ -42,6 +42,7 @@ library
                        Unbound.Generics.LocallyNameless.Operations
                        Unbound.Generics.LocallyNameless.Unsafe
                        Unbound.Generics.LocallyNameless.Internal.Fold
+                       Unbound.Generics.LocallyNameless.Rec
                        Unbound.Generics.PermM
                        Unbound.Generics.LocallyNameless.Subst
   -- other-modules:       

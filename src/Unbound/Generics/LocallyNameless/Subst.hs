@@ -57,6 +57,7 @@ import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Embed
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Rebind
+import Unbound.Generics.LocallyNameless.Rec
 
 -- | See 'isVar'
 data SubstName a b where
@@ -175,3 +176,7 @@ instance (Subst c a) => Subst c (Embed a)
 instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (Bind a b)
 
 instance (Subst c p1, Subst c p2) => Subst c (Rebind p1 p2)
+
+instance (Subst c p) => Subst c (Rec p)
+
+instance (Alpha p, Subst c p) => Subst c (TRec p)

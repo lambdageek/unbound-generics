@@ -1,3 +1,9 @@
+# 0.0.2
+
+* Add 'Rec' pattern and 'TRec' term combinators.
+
+* Alpha instance for '()'
+
 # 0.0.1
 
 * Add 'lunbind2' function.

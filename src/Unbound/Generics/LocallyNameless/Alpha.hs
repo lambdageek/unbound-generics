@@ -484,6 +484,7 @@ instance Alpha Bool
 
 instance Alpha a => Alpha (Maybe a)
 instance Alpha a => Alpha [a]
+instance Alpha ()
 instance (Alpha a,Alpha b) => Alpha (Either a b)
 instance (Alpha a,Alpha b) => Alpha (a,b)
 instance (Alpha a,Alpha b,Alpha c) => Alpha (a,b,c)
