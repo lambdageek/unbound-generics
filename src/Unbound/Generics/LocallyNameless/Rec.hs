@@ -29,7 +29,7 @@ import Unbound.Generics.LocallyNameless.Bind
 -- embedded within itself.  Useful for encoding e.g. lectrec and
 -- Agda's dot notation.
 newtype Rec p = Rec p
-              deriving (Generic)
+              deriving (Generic, Eq)
 
 instance Show a => Show (Rec a) where
   showsPrec _ (Rec a) = showString "[" . showsPrec 0 a . showString "]"
