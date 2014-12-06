@@ -64,6 +64,7 @@ Test-Suite test-unbound-generics
                        ParallelReduction
                        TestParallelReduction
                        PropOpenClose
+                       TinyLam
   build-depends:       base,
                        mtl,
                        tasty,
