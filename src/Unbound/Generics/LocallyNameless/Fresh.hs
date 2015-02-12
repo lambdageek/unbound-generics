@@ -20,9 +20,7 @@ import Control.Monad ()
 import Control.Monad.Identity
 
 import Control.Monad.Trans
-#if MIN_VERSION_transformers(0,4,0)
 import Control.Monad.Trans.Except
-#endif
 import Control.Monad.Trans.Error
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
@@ -100,10 +98,8 @@ instance Monad m => Fresh (FreshMT m) where
 instance (Error e, Fresh m) => Fresh (ErrorT e m) where
   fresh = lift . fresh
 
-#if MIN_VERSION_transformers(0,4,0)
 instance Fresh m => Fresh (ExceptT e m) where
   fresh = lift . fresh
-#endif
 
 instance Fresh m => Fresh (MaybeT m) where
   fresh = lift . fresh
