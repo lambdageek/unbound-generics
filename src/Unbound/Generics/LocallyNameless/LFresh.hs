@@ -69,9 +69,7 @@ import Control.Applicative (Applicative, Alternative)
 
 import Control.Monad.Trans.Cont
 import Control.Monad.Trans.Error
-#if MIN_VERSION_transformers(0,4,0)
 import Control.Monad.Trans.Except
-#endif
 import Control.Monad.Trans.Identity
 import Control.Monad.Trans.List
 import Control.Monad.Trans.Maybe
@@ -147,12 +145,10 @@ instance (Error e, LFresh m) => LFresh (ErrorT e m) where
   avoid  = mapErrorT . avoid
   getAvoids = lift getAvoids
 
-#if MIN_VERSION_transformers(0,4,0)
 instance LFresh m => LFresh (ExceptT e m) where
   lfresh = lift . lfresh
   avoid = mapExceptT . avoid
   getAvoids = lift getAvoids
-#endif
 
 instance LFresh m => LFresh (IdentityT m) where
   lfresh = lift . lfresh
