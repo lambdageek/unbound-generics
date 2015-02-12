@@ -1,3 +1,7 @@
+# 0.0.2.1
+
+* Unconditionally add ErrorT and ExceptT instances using transformers-compat (bergmark)
+
 # 0.0.2
 
 * Add 'Rec' pattern and 'TRec' term combinators.
