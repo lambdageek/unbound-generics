@@ -27,6 +27,18 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , termCtx
   , isTermCtx
   , incrLevelCtx
+  -- * Internal
+  , gaeq
+  , gfvAny
+  , gclose
+  , gopen
+  , gisPat
+  , gisTerm
+  , gnthPatFind
+  , gnamePatFind
+  , gswaps
+  , gfreshen
+  , glfreshen
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
