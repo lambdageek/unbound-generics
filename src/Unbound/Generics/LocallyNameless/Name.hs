@@ -65,6 +65,11 @@ s2n = string2Name
 makeName :: String -> Integer -> Name a
 makeName = Fn
 
+-- | Get the integer part of a 'Name'.
+name2Integer :: Name a -> String
+name2Integer (Fn _ i) = i
+name2Integer (Bn _ _) = error "Internal Error: cannot call name2Integer for bound names"
+
 -- | Get the string part of a 'Name'.
 name2String :: Name a -> String
 name2String (Fn s _) = s
