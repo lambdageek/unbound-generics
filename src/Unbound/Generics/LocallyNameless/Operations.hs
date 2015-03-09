@@ -10,6 +10,7 @@
 module Unbound.Generics.LocallyNameless.Operations
        (-- * Equivalence, free variables, freshness
          aeq
+       , acompare
        , fvAny
        , fv
        , freshen
@@ -59,6 +60,10 @@ import Unbound.Generics.PermM
 -- | @'aeq' t1 t2@ returns @True@ iff @t1@ and @t2@ are alpha-equivalent terms.
 aeq :: Alpha a => a -> a -> Bool
 aeq = aeq' initialCtx
+
+-- | An alpha-respecting total order on terms involving binders.
+acompare :: Alpha a => a -> a -> Ordering
+acompare = acompare' initialCtx
 
 -- | @'fvAny'@ returns a fold over any names in a term @a@.
 --

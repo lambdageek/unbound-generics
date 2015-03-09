@@ -55,6 +55,7 @@ instance Alpha ArithOp where
   swaps' _ctx _p x = x
   freshen' _ctx x = return (x, mempty)
   lfreshen' _ctx x cont = cont x mempty
+  acompare' _ctx (ArithOp s1 _) (ArithOp s2 _) = compare s1 s2
 
 instance Alpha Expr
 instance Alpha Fun

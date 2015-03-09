@@ -75,3 +75,5 @@ instance Alpha t => Alpha (Embed t) where
 
   nthPatFind _ = Left
   namePatFind _ _ = Left 0
+
+  acompare' ctx (Embed x) (Embed y) = acompare' (termCtx ctx) x y

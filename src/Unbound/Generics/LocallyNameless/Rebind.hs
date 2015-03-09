@@ -81,3 +81,6 @@ instance (Alpha p1, Alpha p2) => Alpha (Rebind p1 p2) where
 
   open ctx b (Rebnd p1 p2) = Rebnd (open ctx b p1) (open (incrLevelCtx ctx) b p2)
   close ctx b (Rebnd p1 p2) = Rebnd (close ctx b p1) (close (incrLevelCtx ctx) b p2)
+
+  acompare' ctx (Rebnd p1 p2) (Rebnd q1 q2) =
+    acompare' ctx p1 q1 <> acompare' (incrLevelCtx ctx) p2 q2
