@@ -74,7 +74,7 @@ name2Integer (Bn _ _) = error "Internal Error: cannot call name2Integer for boun
 -- | Get the string part of a 'Name'.
 name2String :: Name a -> String
 name2String (Fn s _) = s
-name2String (Bn _ _)   = error "Internal Error: cannot call name2Integer for bound names"
+name2String (Bn _ _) = error "Internal Error: cannot call name2String for bound names"
 
 instance Show (Name a) where
   show (Fn "" n) = "_" ++ (show n)
