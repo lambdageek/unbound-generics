@@ -22,6 +22,7 @@ module Unbound.Generics.LocallyNameless.Name
        , makeName
          -- * Name inspection
        , name2String
+       , name2Integer
          -- * Heterogeneous names
        , AnyName(..)
        ) where
