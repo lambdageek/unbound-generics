@@ -1,3 +1,10 @@
+# 0.1
+
+* Add `acompare` functiona and `acompare'` method to `Alpha` typeclass.  (christiaanb)
+
+    Handwritten `Alpha` instances will need to define this additional
+    method now.  Major version bump.
+
 # 0.0.3
 
 * Add 'name2Integer' method (christiaanb)
