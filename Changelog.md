@@ -1,3 +1,16 @@
+# 0.0.3
+
+* Add 'name2Integer' method (christiaanb)
+* Export internal type-directed `gaeq`, `gopen`, `gclose`, etc
+  functions from `Unbound.Generics.LocallyNameless.Alpha`.
+
+    Allows definitions like:
+
+        instance Alpha Term where
+          aeq' _ (Prim t1 _dk1) (Prim t2 _dk2) = t1 == t2
+          aeq' c t1             t2             = gaeq c (from t1) (from t2)
+
+
 # 0.0.2.1
 
 * Unconditionally add ErrorT and ExceptT instances using transformers-compat (bergmark)
