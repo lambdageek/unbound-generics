@@ -75,3 +75,6 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
     lfreshen' (patternCtx ctx) p $ \p' pm1 ->
     lfreshen' (incrLevelCtx ctx) (swaps' (incrLevelCtx ctx) pm1 t) $ \t' pm2 ->
     cont (B p' t') (pm1 <> pm2)
+
+  acompare' ctx (B p1 t1) (B p2 t2) =
+    acompare' (patternCtx ctx) p1 p2 <> acompare' (incrLevelCtx ctx) t1 t2

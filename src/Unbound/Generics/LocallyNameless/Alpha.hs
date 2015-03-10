@@ -39,6 +39,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , gswaps
   , gfreshen
   , glfreshen
+  , gacompare
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
@@ -50,7 +51,7 @@ import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>))
 import Data.Ratio (Ratio)
-import Data.Typeable (Typeable, gcast)
+import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Name
@@ -201,6 +202,11 @@ class (Show a) => Alpha a where
   default freshen'  :: (Generic a, GAlpha (Rep a), Fresh m) => AlphaCtx -> a -> m (a, Perm AnyName)
   freshen' ctx = liftM (first to) . gfreshen ctx . from
 
+  -- | See 'Unbound.Generics.LocallyNameless.Operations.acompare'. An alpha-respecting total order on terms involving binders.
+  acompare' :: AlphaCtx -> a -> a -> Ordering
+  default acompare' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Ordering
+  acompare' c = (gacompare c) `on` from
+
 -- | The result of @'nthPatFind' a i@ is @Left k@ where @k@ is the
 -- number of names in pattern @a@ with @k < i@ or @Right x@ where @x@
 -- is the @i@th name in @a@
@@ -231,7 +237,9 @@ class GAlpha f where
   gfreshen :: Fresh m => AlphaCtx -> f a -> m (f a, Perm AnyName)
 
   glfreshen :: LFresh m => AlphaCtx -> f a -> (f a -> Perm AnyName -> m b) -> m b
-  
+
+  gacompare :: AlphaCtx -> f a -> f a -> Ordering
+
 instance (Alpha c) => GAlpha (K1 i c) where
   gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
 
@@ -251,6 +259,8 @@ instance (Alpha c) => GAlpha (K1 i c) where
 
   glfreshen ctx (K1 c) cont = lfreshen' ctx c (cont . K1)
 
+  gacompare ctx (K1 c1) (K1 c2) = acompare' ctx c1 c2
+
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
 
@@ -264,12 +274,14 @@ instance GAlpha f => GAlpha (M1 i c f) where
 
   gnthPatFind = gnthPatFind . unM1
   gnamePatFind = gnamePatFind . unM1
-  
+
   gswaps ctx perm = M1 . gswaps ctx perm . unM1
   gfreshen ctx = liftM (first M1) . gfreshen ctx . unM1
 
   glfreshen ctx (M1 f) cont =
     glfreshen ctx f (cont . M1)
+
+  gacompare ctx (M1 f1) (M1 f2) = gacompare ctx f1 f2
 
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
@@ -290,6 +302,8 @@ instance GAlpha U1 where
 
   glfreshen _ctx _ cont = cont U1 mempty
 
+  gacompare _ctx _ _ = EQ
+
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
 
@@ -308,6 +322,8 @@ instance GAlpha V1 where
   gfreshen _ctx _ = return (undefined, mempty)
 
   glfreshen _ctx _ cont = cont undefined mempty
+
+  gacompare _ctx _ _ = error "LocallyNameless.gacompare: undefined for empty data types"
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
@@ -344,6 +360,9 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     glfreshen ctx (gswaps ctx perm2 f) $ \f' perm1 ->
     cont (f' :*: g') (perm1 <> perm2)
 
+  gacompare ctx (f1 :*: g1) (f2 :*: g2) =
+    (gacompare ctx f1 f2) <> (gacompare ctx g1 g2)
+
 instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
   gaeq ctx  (R1 g1) (R1 g2) = gaeq ctx g1 g2
@@ -379,7 +398,11 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
     glfreshen ctx f (cont . L1)
   glfreshen ctx (R1 g) cont =
     glfreshen ctx g (cont . R1)
-  
+
+  gacompare _ctx (L1 _) (R1 _)   = LT
+  gacompare _ctx (R1 _) (L1 _)   = GT
+  gacompare ctx  (L1 f1) (L1 f2) = gacompare ctx f1 f2
+  gacompare ctx  (R1 g1) (R1 g2) = gacompare ctx g1 g2
 
 -- ============================================================
 -- Alpha instances for the usual types
@@ -402,6 +425,8 @@ instance Alpha Int where
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
 
+  acompare' _ctx i j = compare i j
+
 instance Alpha Char where
   aeq' _ctx i j = i == j
 
@@ -419,6 +444,8 @@ instance Alpha Char where
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
 
 instance Alpha Integer where
   aeq' _ctx i j = i == j
@@ -438,6 +465,8 @@ instance Alpha Integer where
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
 
+  acompare' _ctx i j = compare i j
+
 instance Alpha Float where
   aeq' _ctx i j = i == j
 
@@ -455,6 +484,8 @@ instance Alpha Float where
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
 
 instance Alpha Double where
   aeq' _ctx i j = i == j
@@ -474,6 +505,8 @@ instance Alpha Double where
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
 
+  acompare' _ctx i j = compare i j
+
 instance (Integral n, Alpha n) => Alpha (Ratio n) where
   aeq' _ctx i j = i == j
 
@@ -491,6 +524,8 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
   lfreshen' _ctx i cont = cont i mempty
+
+  acompare' _ctx i j = compare i j
 
 instance Alpha Bool
 
@@ -575,6 +610,20 @@ instance Typeable a => Alpha (Name a) where
       avoid [AnyName nm'] $ cont nm' $ single (AnyName nm) (AnyName nm')
     else error "lfreshen' on a Name in term position"
 
+  acompare' ctx (Fn s1 i1) (Fn s2 i2)
+    | isTermCtx ctx = (compare s1 s2) <> (compare i1 i2)
+
+  acompare' ctx n1@(Bn i1 j1) n2@(Bn i2 j2)
+    | isTermCtx ctx = mconcat [ compare (typeOf n1) (typeOf n2)
+                              , compare i1 i2
+                              , compare j1 j2
+                              ]
+
+  acompare' ctx (Fn _ _) (Bn _ _) | isTermCtx ctx = LT
+  acompare' ctx (Bn _ _) (Fn _ _) | isTermCtx ctx = GT
+
+  acompare' _ _          _                        = EQ
+
 instance Alpha AnyName where
   aeq' ctx x y =
     if x == y
@@ -624,3 +673,15 @@ instance Alpha AnyName where
     if nmHave == nmWant
     then Right 0
     else Left 1
+
+  acompare' _ x y | x == y = EQ
+
+  acompare' ctx (AnyName n1) (AnyName n2)
+    | isTermCtx ctx =
+      case compare (typeOf n1) (typeOf n2) of
+        EQ -> case gcast n2 of
+          Just n2' -> acompare' ctx n1 n2'
+          Nothing -> error "LocallyNameless.acompare': Equal type representations, but gcast failed in comparing two AnyName values"
+        ord -> ord
+
+  acompare' _ _ _ = EQ
