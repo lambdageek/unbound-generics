@@ -361,7 +361,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     cont (f' :*: g') (perm1 <> perm2)
 
   gacompare ctx (f1 :*: g1) (f2 :*: g2) =
-    mappend (gacompare ctx f1 f2) (gacompare ctx g1 g2)
+    (gacompare ctx f1 f2) <> (gacompare ctx g1 g2)
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
@@ -611,7 +611,7 @@ instance Typeable a => Alpha (Name a) where
     else error "lfreshen' on a Name in term position"
 
   acompare' ctx (Fn s1 i1) (Fn s2 i2)
-    | isTermCtx ctx = mappend (compare s1 s2) (compare i1 i2)
+    | isTermCtx ctx = (compare s1 s2) <> (compare i1 i2)
 
   acompare' ctx n1@(Bn i1 j1) n2@(Bn i2 j2)
     | isTermCtx ctx = mconcat [ compare (typeOf n1) (typeOf n2)
