@@ -323,7 +323,7 @@ instance GAlpha V1 where
 
   glfreshen _ctx _ cont = cont undefined mempty
 
-  gacompare _ctx _ _ = undefined
+  gacompare _ctx _ _ = error "LocallyNameless.gacompare: undefined for empty data types"
 
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
@@ -681,7 +681,7 @@ instance Alpha AnyName where
       case compare (typeOf n1) (typeOf n2) of
         EQ -> case gcast n2 of
           Just n2' -> acompare' ctx n1 n2'
-          Nothing -> error "Equal type representations, but gcast failed in comparing two AnyName values"
+          Nothing -> error "LocallyNameless.acompare': Equal type representations, but gcast failed in comparing two AnyName values"
         ord -> ord
 
   acompare' _ _ _ = EQ
