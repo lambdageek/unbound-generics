@@ -157,6 +157,7 @@ class (Show a) => Alpha a where
   aeq' :: AlphaCtx -> a -> a -> Bool
   default aeq' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Bool
   aeq' c = (gaeq c) `on` from
+  {-# INLINE aeq' #-}
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.fvAny'.
   --
@@ -166,26 +167,31 @@ class (Show a) => Alpha a where
   fvAny' :: (Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
   default fvAny' :: (Generic a, GAlpha (Rep a), Contravariant f, Applicative f) => AlphaCtx -> (AnyName -> f AnyName) -> a -> f a
   fvAny' c nfn = fmap to . gfvAny c nfn . from
+  {-# INLINE fvAny' #-}
 
   -- | Replace free names by bound names.
   close :: Alpha b => AlphaCtx -> b -> a -> a
   default close :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
   close c b = to . gclose c b . from
+  {-# INLINE close #-}
 
   -- | Replace bound names by free names.
   open :: Alpha b => AlphaCtx -> b -> a -> a
   default open :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
   open c b = to . gopen c b . from
+  {-# INLINE open #-}
 
   -- | @isPat x@ dynamically checks whether @x@ can be used as a valid pattern.
   isPat :: a -> DisjointSet AnyName
   default isPat :: (Generic a, GAlpha (Rep a)) => a -> DisjointSet AnyName
   isPat = gisPat . from
+  {-# INLINE isPat #-}
 
   -- | @isPat x@ dynamically checks whether @x@ can be used as a valid term.
   isTerm :: a -> Bool
   default isTerm :: (Generic a, GAlpha (Rep a)) => a -> Bool
   isTerm = gisTerm . from
+  {-# INLINE isTerm #-}
 
   -- | @isEmbed@ is needed internally for the implementation of
   --   'isPat'.  @isEmbed@ is true for terms wrapped in 'Embed' and zero
@@ -193,6 +199,7 @@ class (Show a) => Alpha a where
   --   simply returns @False@.
   isEmbed :: a -> Bool
   isEmbed _ = False
+  {-# INLINE isEmbed #-}
 
   -- | If @a@ is a pattern, finds the @n@th name in the pattern
   -- (starting from zero), returning the number of names encountered
@@ -200,23 +207,27 @@ class (Show a) => Alpha a where
   nthPatFind :: a -> NthPatFind
   default nthPatFind :: (Generic a, GAlpha (Rep a)) => a -> NthPatFind
   nthPatFind = gnthPatFind . from
+  {-# INLINE nthPatFind #-}
 
   -- | If @a@ is a pattern, find the index of the given name in the pattern.
   namePatFind :: a -> NamePatFind
   default namePatFind :: (Generic a, GAlpha (Rep a)) => a -> NamePatFind
   namePatFind = gnamePatFind . from
+  {-# INLINE namePatFind #-}
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.swaps'. Apply
   -- the given permutation of variable names to the given pattern.
   swaps' :: AlphaCtx -> Perm AnyName -> a -> a
   default swaps' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> Perm AnyName -> a -> a
   swaps' ctx perm = to . gswaps ctx perm . from
+  {-# INLINE swaps' #-}
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.freshen'.
   lfreshen' :: LFresh m => AlphaCtx -> a -> (a -> Perm AnyName -> m b) -> m b
   default lfreshen' :: (LFresh m, Generic a, GAlpha (Rep a))
                        => AlphaCtx -> a -> (a -> Perm AnyName -> m b) -> m b
   lfreshen' ctx m cont = glfreshen ctx (from m) (cont . to)
+  {-# INLINE lfreshen' #-}
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.freshen'.  Rename the free variables
   -- in the given term to be distinct from all other names seen in the monad @m@.
@@ -310,51 +321,72 @@ class GAlpha f where
 
 instance (Alpha c) => GAlpha (K1 i c) where
   gaeq ctx (K1 c1) (K1 c2) = aeq' ctx c1 c2
+  {-# INLINE gaeq #-}
 
   gfvAny ctx nfn = fmap K1 . fvAny' ctx nfn . unK1
-
+  {-# INLINE gfvAny #-}
+  
   gclose ctx b = K1 . close ctx b . unK1
+  {-# INLINE gclose #-}
   gopen ctx b = K1 . open ctx b . unK1
+  {-# INLINE gopen #-}
 
   gisPat = isPat . unK1
+  {-# INLINE gisPat #-}
   gisTerm = isTerm . unK1
+  {-# INLINE gisTerm #-}
 
   gnthPatFind = nthPatFind . unK1
+  {-# INLINE gnthPatFind #-}
   gnamePatFind = namePatFind . unK1
+  {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm = K1 . swaps' ctx perm . unK1
+  {-# INLINE gswaps #-}
   gfreshen ctx = liftM (first K1) . liftFFM . freshen' ctx . unK1
   {-# INLINE gfreshen #-}
 
   glfreshen ctx (K1 c) cont = lfreshen' ctx c (cont . K1)
+  {-# INLINE glfreshen #-}
 
   gacompare ctx (K1 c1) (K1 c2) = acompare' ctx c1 c2
 
 instance GAlpha f => GAlpha (M1 i c f) where
   gaeq ctx (M1 f1) (M1 f2) = gaeq ctx f1 f2
+  {-# INLINE gaeq #-}
 
   gfvAny ctx nfn = fmap M1 . gfvAny ctx nfn . unM1
+  {-# INLINE gfvAny #-}
 
   gclose ctx b = M1 . gclose ctx b . unM1
+  {-# INLINE gclose #-}
   gopen ctx b = M1 . gopen ctx b . unM1
+  {-# INLINE gopen #-}
 
   gisPat = gisPat . unM1
+  {-# INLINE gisPat #-}
   gisTerm = gisTerm . unM1
+  {-# INLINE gisTerm #-}
 
   gnthPatFind = gnthPatFind . unM1
+  {-# INLINE gnthPatFind #-}
   gnamePatFind = gnamePatFind . unM1
+  {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm = M1 . gswaps ctx perm . unM1
+  {-# INLINE gswaps #-}
   gfreshen ctx = liftM (first M1) . gfreshen ctx . unM1
   {-# INLINE gfreshen #-}
 
   glfreshen ctx (M1 f) cont =
     glfreshen ctx f (cont . M1)
+  {-# INLINE glfreshen #-}
 
   gacompare ctx (M1 f1) (M1 f2) = gacompare ctx f1 f2
 
 instance GAlpha U1 where
   gaeq _ctx _ _ = True
+  {-# INLINE gaeq #-}
 
   gfvAny _ctx _nfn _ = pure U1
 
@@ -377,6 +409,7 @@ instance GAlpha U1 where
 
 instance GAlpha V1 where
   gaeq _ctx _ _ = False
+  {-# INLINE gaeq #-}
 
   gfvAny _ctx _nfn = pure
 
@@ -400,27 +433,36 @@ instance GAlpha V1 where
 instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gaeq ctx (f1 :*: g1) (f2 :*: g2) =
     gaeq ctx f1 f2 && gaeq ctx g1 g2
+  {-# INLINE gaeq #-}
 
   gfvAny ctx nfn (f :*: g) = (:*:) <$> gfvAny ctx nfn f
                                    <*> gfvAny ctx nfn g
+  {-# INLINE gfvAny #-}
 
   gclose ctx b (f :*: g) = gclose ctx b f :*: gclose ctx b g
+  {-# INLINE gclose #-}
   gopen ctx b (f :*: g) = gopen ctx b f :*: gopen ctx b g
+  {-# INLINE gopen #-}
 
   gisPat (f :*: g) = gisPat f <> gisPat g
+  {-# INLINE gisPat #-}
   gisTerm (f :*: g) = gisTerm f && gisTerm g
+  {-# INLINE gisTerm #-}
 
   gnthPatFind (f :*: g) i = case gnthPatFind f i of
     Left i' -> gnthPatFind g i'
     Right ans -> Right ans
+  {-# INLINE gnthPatFind #-}
   gnamePatFind (f :*: g) n = case gnamePatFind f n of
     Left j -> case gnamePatFind g n of
       Left i -> Left $! j + i
       Right k -> Right $! j + k
     Right k -> Right k
+  {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm (f :*: g) =
     gswaps ctx perm f :*: gswaps ctx perm g
+  {-# INLINE gswaps #-}
 
   gfreshen ctx (f :*: g) = do
     ~(g', perm2) <- gfreshen ctx g
@@ -432,6 +474,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     glfreshen ctx g $ \g' perm2 ->
     glfreshen ctx (gswaps ctx perm2 f) $ \f' perm1 ->
     cont (f' :*: g') (perm1 <> perm2)
+  {-# INLINE glfreshen #-}
 
   gacompare ctx (f1 :*: g1) (f2 :*: g2) =
     (gacompare ctx f1 f2) <> (gacompare ctx g1 g2)
@@ -440,29 +483,38 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gaeq ctx  (L1 f1) (L1 f2) = gaeq ctx f1 f2
   gaeq ctx  (R1 g1) (R1 g2) = gaeq ctx g1 g2
   gaeq _ctx _       _       = False
+  {-# INLINE gaeq #-}
 
   gfvAny ctx nfn (L1 f) = fmap L1 (gfvAny ctx nfn f)
   gfvAny ctx nfn (R1 g) = fmap R1 (gfvAny ctx nfn g)
-
+  {-# INLINE gfvAny #-}
+  
   gclose ctx b (L1 f) = L1 (gclose ctx b f)
   gclose ctx b (R1 g) = R1 (gclose ctx b g)
+  {-# INLINE gclose #-}
   gopen ctx b (L1 f) = L1 (gopen ctx b f)
   gopen ctx b (R1 g) = R1 (gopen ctx b g)
+  {-# INLINE gopen #-}
 
   gisPat (L1 f) = gisPat f
   gisPat (R1 g) = gisPat g
+  {-# INLINE gisPat #-}
 
   gisTerm (L1 f) = gisTerm f
   gisTerm (R1 g) = gisTerm g
+  {-# INLINE gisTerm #-}
 
   gnthPatFind (L1 f) i = gnthPatFind f i
   gnthPatFind (R1 g) i = gnthPatFind g i
-  
+  {-# INLINE gnthPatFind #-}
+
   gnamePatFind (L1 f) n = gnamePatFind f n
   gnamePatFind (R1 g) n = gnamePatFind g n
+  {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm (L1 f) = L1 (gswaps ctx perm f)
   gswaps ctx perm (R1 f) = R1 (gswaps ctx perm f)
+  {-# INLINE gswaps #-}
 
   gfreshen ctx (L1 f) = liftM (first L1) (gfreshen ctx f)
   gfreshen ctx (R1 f) = liftM (first R1) (gfreshen ctx f)
@@ -472,11 +524,13 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
     glfreshen ctx f (cont . L1)
   glfreshen ctx (R1 g) cont =
     glfreshen ctx g (cont . R1)
+  {-# INLINE glfreshen #-}
 
   gacompare _ctx (L1 _) (R1 _)   = LT
   gacompare _ctx (R1 _) (L1 _)   = GT
   gacompare ctx  (L1 f1) (L1 f2) = gacompare ctx f1 f2
   gacompare ctx  (R1 g1) (R1 g2) = gacompare ctx g1 g2
+  {-# INLINE gacompare #-}
 
 -- ============================================================
 -- Alpha instances for the usual types
