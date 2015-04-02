@@ -9,7 +9,9 @@
 -- Use the 'Alpha' typeclass to mark types that may contain 'Name's.
 {-# LANGUAGE DefaultSignatures
              , FlexibleContexts
-             , TypeOperators #-}
+             , TypeOperators
+             , RankNTypes
+  #-}
 module Unbound.Generics.LocallyNameless.Alpha (
   -- * Name-aware opertions
   Alpha(..)
@@ -200,12 +202,48 @@ class (Show a) => Alpha a where
   -- in the given term to be distinct from all other names seen in the monad @m@.
   freshen' :: Fresh m => AlphaCtx -> a -> m (a, Perm AnyName)
   default freshen'  :: (Generic a, GAlpha (Rep a), Fresh m) => AlphaCtx -> a -> m (a, Perm AnyName)
-  freshen' ctx = liftM (first to) . gfreshen ctx . from
+  freshen' ctx = retractFFM . liftM (first to) . gfreshen ctx . from
 
   -- | See 'Unbound.Generics.LocallyNameless.Operations.acompare'. An alpha-respecting total order on terms involving binders.
   acompare' :: AlphaCtx -> a -> a -> Ordering
   default acompare' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Ordering
   acompare' c = (gacompare c) `on` from
+
+-- Internal: the free monad over the Functor f.  Note that 'freshen''
+-- has a monadic return type and moreover we have to thread the
+-- permutation through the 'gfreshen' calls to crawl over the value
+-- constructors.  Since we don't know anything about the monad @m@,
+-- GHC can't help us.  But note that none of the code in the generic
+-- 'gfreshen' instances actually makes use of the 'Fresh.fresh'
+-- function; they just plumb the dictionary through to any 'K' nodes
+-- that happen to contain a value of a type like 'Name' that does
+-- actually freshen something.  So what we do is we actually make
+-- gfreshen work not in the monad @m@, but in the monad @FFM m@ and
+-- then use 'retractFFM' in the default 'Alpha' method to return back
+-- down to @m@.  We don't really make use of the fact that 'FFM'
+-- reassociates the binds of the underlying monad, but it doesn't hurt
+-- anything.  Mostly what we care about is giving the inliner a chance
+-- to eliminate most of the monadic plumbing.
+newtype FFM f a = FFM { runFFM :: forall r . (a -> r) -> (f r -> r) -> r }
+
+instance Functor (FFM f) where
+  fmap f (FFM h) = FFM (\r j -> h (r . f) j)
+
+instance Applicative (FFM f) where
+  pure = return
+  (FFM h) <*> (FFM k) = FFM (\r j -> h (\f -> k (r . f) j) j)
+
+instance Monad (FFM f) where
+  return x = FFM (\r _j -> r x)
+  (FFM h) >>= f = FFM (\r j -> h (\x -> runFFM (f x) r j) j)
+
+instance Fresh m => Fresh (FFM m) where
+  fresh x = FFM (\r j -> j (liftM r (fresh x)))
+
+retractFFM :: Monad m => FFM m a -> m a
+retractFFM (FFM h) = h return j
+  where
+    j mmf = mmf >>= \mf -> mf
 
 -- | The result of @'nthPatFind' a i@ is @Left k@ where @k@ is the
 -- number of names in pattern @a@ with @k < i@ or @Right x@ where @x@
@@ -234,7 +272,7 @@ class GAlpha f where
   gnamePatFind :: f a -> NamePatFind
 
   gswaps :: AlphaCtx -> Perm AnyName -> f a -> f a
-  gfreshen :: Fresh m => AlphaCtx -> f a -> m (f a, Perm AnyName)
+  gfreshen :: Fresh m => AlphaCtx -> f a -> FFM m (f a, Perm AnyName)
 
   glfreshen :: LFresh m => AlphaCtx -> f a -> (f a -> Perm AnyName -> m b) -> m b
 
