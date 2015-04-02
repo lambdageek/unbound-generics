@@ -238,7 +238,10 @@ instance Monad (FFM f) where
   (FFM h) >>= f = FFM (\r j -> h (\x -> runFFM (f x) r j) j)
 
 instance Fresh m => Fresh (FFM m) where
-  fresh x = FFM (\r j -> j (liftM r (fresh x)))
+  fresh = liftFFM . fresh 
+
+liftFFM :: Monad m => m a -> FFM m a
+liftFFM m = FFM (\r j -> j (liftM r m))
 
 retractFFM :: Monad m => FFM m a -> m a
 retractFFM (FFM h) = h return j
@@ -293,7 +296,7 @@ instance (Alpha c) => GAlpha (K1 i c) where
   gnamePatFind = namePatFind . unK1
 
   gswaps ctx perm = K1 . swaps' ctx perm . unK1
-  gfreshen ctx = liftM (first K1) . freshen' ctx . unK1
+  gfreshen ctx = liftM (first K1) . liftFFM . freshen' ctx . unK1
 
   glfreshen ctx (K1 c) cont = lfreshen' ctx c (cont . K1)
 
@@ -389,8 +392,8 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     gswaps ctx perm f :*: gswaps ctx perm g
 
   gfreshen ctx (f :*: g) = do
-    (g', perm2) <- gfreshen ctx g
-    (f', perm1) <- gfreshen ctx (gswaps ctx perm2 f)
+    ~(g', perm2) <- gfreshen ctx g
+    ~(f', perm1) <- gfreshen ctx (gswaps ctx perm2 f)
     return (f' :*: g', perm1 <> perm2)
 
   glfreshen ctx (f :*: g) cont =
