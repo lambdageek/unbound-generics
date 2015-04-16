@@ -18,6 +18,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , inconsistentDisjointSet
   , singletonDisjointSet
   , isConsistentDisjointSet
+  , isNullDisjointSet
   -- * Implementation details
   , NthPatFind
   , NamePatFind
@@ -125,6 +126,11 @@ disjointLists xs ys = null (intersect xs ys)
 isConsistentDisjointSet :: DisjointSet a -> Bool
 isConsistentDisjointSet (DisjointSet Nothing) = False
 isConsistentDisjointSet _ = True
+
+-- | @isNullDisjointSet@ return @True@ iff the given disjoint set is 'mempty'.
+isNullDisjointSet :: DisjointSet a -> Bool
+isNullDisjointSet (DisjointSet (Just [])) = True
+isNullDisjointSet _ = False
 
 -- | Types that are instances of @Alpha@ may participate in name representation.
 --

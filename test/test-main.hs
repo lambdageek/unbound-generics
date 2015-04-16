@@ -7,6 +7,7 @@ import TestParallelReduction
 import PropOpenClose
 import TinyLam
 import TestACompare
+import TestTH
 
 main :: IO ()
 main = defaultMain $ testGroup "unboundGenerics"
@@ -16,4 +17,5 @@ main = defaultMain $ testGroup "unboundGenerics"
        , test_openClose
        , test_tinyLam
        , test_acompare
+       , test_TH
        ]

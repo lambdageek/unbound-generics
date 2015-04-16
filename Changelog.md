@@ -1,3 +1,8 @@
+# 0.1.1
+
+* Added `isNullDisjointSet` function.
+* Implement a TH `makeClosedAlpha` splice for constructing trivial leaf instances.
+
 # 0.1
 
 * Add `acompare` functiona and `acompare'` method to `Alpha` typeclass.  (christiaanb)

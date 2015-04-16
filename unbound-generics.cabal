@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                unbound-generics
-version:             0.1
+version:             0.1.1
 synopsis:            Reimplementation of Unbound using GHC Generics
 description:         Specify the binding structure of your data type with an
                      expressive set of type combinators, and unbound-generics
@@ -22,7 +22,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
 maintainer:          aleksey@lambdageek.org
-copyright:           (c) 2014, Aleksey Kliger
+copyright:           (c) 2014-2015, Aleksey Kliger
 category:            Language
 build-type:          Simple
 extra-source-files:  examples/*.hs,
@@ -43,11 +43,13 @@ library
                        Unbound.Generics.LocallyNameless.Unsafe
                        Unbound.Generics.LocallyNameless.Internal.Fold
                        Unbound.Generics.LocallyNameless.Rec
+                       Unbound.Generics.LocallyNameless.TH
                        Unbound.Generics.PermM
                        Unbound.Generics.LocallyNameless.Subst
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base >=4.6 && <5,
+                       template-haskell >= 2.8.0.0,
                        mtl >= 2.1,
                        transformers >= 0.3,
                        transformers-compat >= 0.3,
@@ -60,13 +62,15 @@ library
 Test-Suite test-unbound-generics
   type:                exitcode-stdio-1.0
   main-is:             test-main.hs
-  other-modules:       Calc
+  other-modules:       AlphaAssertions
+                       Calc
                        TestCalc
                        ParallelReduction
                        TestParallelReduction
                        PropOpenClose
                        TinyLam
                        TestACompare
+                       TestTH
   build-depends:       base,
                        mtl,
                        tasty,

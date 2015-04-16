@@ -8,6 +8,8 @@ import Unbound.Generics.LocallyNameless
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import AlphaAssertions
+
 data Expr
   = V (Name Expr)
   | Add Expr Expr
@@ -15,11 +17,6 @@ data Expr
   deriving (Show,Generic,Typeable)
 
 instance Alpha Expr
-
-assertAcompare :: (Alpha t, Show t) => t -> t -> Ordering -> Assertion
-assertAcompare x y o =
-  let o' = acompare x y
-  in  assertBool (show x ++ " not alpha-" ++ show o' ++ " to " ++ show y ++ ", but alpha-" ++ show o) (o' == o)
 
 nameA, nameB, nameC :: Name Expr
 nameA = s2n "a"
