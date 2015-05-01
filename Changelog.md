@@ -1,3 +1,13 @@
+# 0.1.2
+
+* Added `IsEmbed` typeclass
+
+    * Depend on 'profunctors'
+
+* Changed `embed` and `unembed` to work over any `IsEmbed` type.
+
+* Added `Shift` type for shifting the scope of embedded terms out one level.
+
 # 0.1.1
 
 * Added `isNullDisjointSet` function.

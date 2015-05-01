@@ -18,3 +18,9 @@ For the most part, I tried to keep the same methods with the same signatures.  H
 
    You should only notice this if you're implementing an instance of `Alpha` by hand (rather than by using the default
    generic instance).  The original `unbound` returned a `Maybe [AnyName]` here with the same interpretation as `DisjointSet`: `Nothing` means an inconsistency was encountered, or `Just` the free variables of the pattern.
+
+3. `embed :: IsEmbed e => Embedded e -> e` and `unembed :: IsEmbed e => e -> Embedded e`
+
+    The typeclass `IsEmbed` has an `Iso` (again in the sense of the `lens` library) as a method instead of the above pair of methods.
+
+    Again, you should only notice this if you're implementing your own types that are instances of `IsEmbed`.  The easiest thing to do is to use implement `embedded = iso yourEmbed yourUnembed` where `iso` comes from `lens`.  (Although you can also implement it in terms of `dimap` if you don't want to depend on lens)

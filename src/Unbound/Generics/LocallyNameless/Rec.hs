@@ -7,7 +7,7 @@
 -- Stability  : experimental
 --
 -- The pattern @'Rec' p@ binds the names in @p@ like @p@ itself would,
--- but additinoally, the names in @p@ are scope over @p@.
+-- but additionally, the names in @p@ are scope over @p@.
 --
 -- The term @'TRec' p@ is shorthand for @'Bind' (Rec p) ()@
 {-# LANGUAGE DeriveGeneric #-}
@@ -52,6 +52,9 @@ instance Show a => Show (TRec a) where
 instance Alpha p => Alpha (Rec p) where
   isTerm _ = False
   isPat (Rec p) = isPat p
+
+  nthPatFind (Rec p) i = nthPatFind p i
+  namePatFind (Rec p) x = namePatFind p x
 
   open ctx b (Rec p) = Rec (open (incrLevelCtx ctx) b p)
   close ctx b (Rec p) = Rec (close (incrLevelCtx ctx) b p)

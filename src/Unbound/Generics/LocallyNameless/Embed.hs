@@ -7,14 +7,17 @@
 -- Stability  : experimental
 --
 -- The pattern @'Embed' t@ contains a term @t@.
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, TypeFamilies #-}
 module Unbound.Generics.LocallyNameless.Embed where
 
 import Control.Applicative (pure, (<$>))
 import Data.Monoid (mempty)
+import Data.Profunctor (Profunctor(..))
+
 import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless.Alpha
+import Unbound.Generics.LocallyNameless.Internal.Iso (iso)
 
 -- | @Embed@ allows for terms to be /embedded/ within patterns.  Such
 --   embedded terms do not bind names along with the rest of the
@@ -30,6 +33,19 @@ import Unbound.Generics.LocallyNameless.Alpha
 --   'Shift's at the same time.)
 newtype Embed t = Embed t deriving (Eq, Generic)
 
+class IsEmbed e where
+  type Embedded e :: *
+  -- | Insert or extract the embedded term.
+  -- If you're not using the lens library, see 'Unbound.Generics.LocallyNameless.Operations.embed'
+  -- and 'Unbound.Generics.LocallyNameless.Operations.unembed'
+  -- otherwise 'embedded' is an isomorphism that you can use with lens.
+  -- @embedded :: Iso' (Embedded e) e@
+  embedded :: (Profunctor p, Functor f) => p (Embedded e) (f (Embedded e)) -> p e (f e)
+
+instance IsEmbed (Embed t) where
+  type Embedded (Embed t) = t
+  embedded = iso (\(Embed t) -> t) Embed
+  
 instance Show a => Show (Embed a) where
   showsPrec _ (Embed a) = showString "{" . showsPrec 0 a . showString "}"
 

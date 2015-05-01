@@ -28,6 +28,8 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , termCtx
   , isTermCtx
   , incrLevelCtx
+  , decrLevelCtx
+  , isZeroLevelCtx
   -- * Internal
   , gaeq
   , gfvAny
@@ -91,6 +93,14 @@ isTermCtx _                           = False
 -- | Increment the number of binders that we are operating under.
 incrLevelCtx :: AlphaCtx -> AlphaCtx
 incrLevelCtx ctx = ctx { ctxLevel = 1 + ctxLevel ctx }
+
+-- | Decrement the number of binders that we are operating under.
+decrLevelCtx :: AlphaCtx -> AlphaCtx
+decrLevelCtx ctx = ctx { ctxLevel = ctxLevel ctx - 1 }
+
+-- | Are we operating under no binders?
+isZeroLevelCtx :: AlphaCtx -> Bool
+isZeroLevelCtx ctx = ctxLevel ctx == 0
 
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.

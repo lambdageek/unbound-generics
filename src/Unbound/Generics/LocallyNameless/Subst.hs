@@ -55,6 +55,7 @@ import Data.List (find)
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Embed
+import Unbound.Generics.LocallyNameless.Shift
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.LocallyNameless.Rec
@@ -172,6 +173,10 @@ instance Generic a => Subst b (Name a) where subst _ _ = id ; substs _ = id
 instance Subst b AnyName where subst _ _ = id ; substs _ = id
 
 instance (Subst c a) => Subst c (Embed a)
+
+instance (Subst c e) => Subst c (Shift e) where
+  subst x b (Shift e) = Shift (subst x b e)
+  substs ss (Shift e) = Shift (substs ss e)
 
 instance (Subst c b, Subst c a, Alpha a, Alpha b) => Subst c (Bind a b)
 
