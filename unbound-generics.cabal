@@ -3,7 +3,7 @@
 
 name:                unbound-generics
 version:             0.1.2
-synopsis:            Reimplementation of Unbound using GHC Generics
+synopsis:            Support for programming with names and binders using GHC Generics
 description:         Specify the binding structure of your data type with an
                      expressive set of type combinators, and unbound-generics
                      handles the rest!  Automatically derives
