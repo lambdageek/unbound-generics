@@ -187,12 +187,11 @@ rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
 unrebind :: (Alpha p1, Alpha p2) => Rebind p1 p2 -> (p1, p2)
 unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
 
--- | Embeds a term in an 'Embed', or an 'Embed' under some number of 'Shift's
+-- | Embeds a term in an 'Embed', or an 'Embed' under some number of 'Unbound.Generics.LocallyNameless.Shift.Shift' constructors.
 embed :: IsEmbed e => Embedded e -> e
 embed e = view (from embedded) e
 
 -- | @'unembed' p@ extracts the term embedded in the pattern @p@.
--- unembed :: Embed t -> t
 unembed :: IsEmbed e => e -> Embedded e
 unembed e = view embedded e
 

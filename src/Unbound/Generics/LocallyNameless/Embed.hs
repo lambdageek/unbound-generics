@@ -34,12 +34,15 @@ import Unbound.Generics.LocallyNameless.Internal.Iso (iso)
 newtype Embed t = Embed t deriving (Eq, Generic)
 
 class IsEmbed e where
+  -- | The term type embedded in the embedding 'e'
   type Embedded e :: *
   -- | Insert or extract the embedded term.
   -- If you're not using the lens library, see 'Unbound.Generics.LocallyNameless.Operations.embed'
   -- and 'Unbound.Generics.LocallyNameless.Operations.unembed'
   -- otherwise 'embedded' is an isomorphism that you can use with lens.
-  -- @embedded :: Iso' (Embedded e) e@
+  -- @
+  -- embedded :: Iso' (Embedded e) e
+  -- @
   embedded :: (Profunctor p, Functor f) => p (Embedded e) (f (Embedded e)) -> p e (f e)
 
 instance IsEmbed (Embed t) where

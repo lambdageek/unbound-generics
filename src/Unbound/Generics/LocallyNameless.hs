@@ -9,7 +9,7 @@
 -- The purpose of @unbound-genrics@ is to simplify the construction of
 -- data structures with rich variable binding structure by providing
 -- generic implementations of alpha-equivalence ('aeq'), free variable
--- permutation ('swaps'), local and glocal variable freshness
+-- permutation ('swaps'), local and global variable freshness
 -- ('lfresh', 'fresh'), 
 --
 --

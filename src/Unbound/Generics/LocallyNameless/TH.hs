@@ -18,14 +18,15 @@ import Data.Monoid (Monoid(..))
 import Unbound.Generics.LocallyNameless.Alpha (Alpha(..))
 
 -- | Make a trivial @instance 'Alpha' T@ for a type @T@ that does not
--- contains no bound nor free values of type @'Name' a@ or @'AnyName'@
+-- contain any bound or free variable names
 -- (or any in general any values that are themselves non-trivial
 -- instances of 'Alpha').  Use this to write 'Alpha' instances for
 -- types that you don't want to traverse via their @GHC.Generics.Rep@
 -- representation just to find out that there aren't any names.
 --
--- @@@
--- data T = T Int deriving (Eq, Ord, Show)
+--
+-- @
+-- newtype T = T Int deriving (Eq, Ord, Show)
 -- $(makeClosedAlpha T)
 -- -- constructs
 -- -- instance Alpha T where
@@ -41,7 +42,7 @@ import Unbound.Generics.LocallyNameless.Alpha (Alpha(..))
 -- --   swaps' _ _ = id
 -- --   freshen' _ i = return (i, mempty)
 -- --   lfreshen' _ i cont = cont i mempty
--- @@@
+-- @
 --
 makeClosedAlpha :: Name -> DecsQ
 makeClosedAlpha tyName = do
