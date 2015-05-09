@@ -1,3 +1,8 @@
+# 0.1.2.1
+
+* Fix ghc-7.10 build.
+* Haddock cleanup.
+
 # 0.1.2
 
 * Added `IsEmbed` typeclass
