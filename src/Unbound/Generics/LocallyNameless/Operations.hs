@@ -189,12 +189,12 @@ unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
 
 -- | Embeds a term in an 'Embed', or an 'Embed' under some number of 'Shift's
 embed :: IsEmbed e => Embedded e -> e
-embed = view (from embedded)
+embed e = view (from embedded) e
 
 -- | @'unembed' p@ extracts the term embedded in the pattern @p@.
 -- unembed :: Embed t -> t
 unembed :: IsEmbed e => e -> Embedded e
-unembed = view embedded
+unembed e = view embedded e
 
 -- | Constructor for recursive abstractions.
 trec :: Alpha p => p -> TRec p
