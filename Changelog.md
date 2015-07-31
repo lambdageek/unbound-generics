@@ -1,3 +1,8 @@
+# 0.1.3
+
+* Provide `NFData` instances for all the combinators.
+  Depend on 'deepseq'
+
 # 0.1.2.1
 
 * Fix ghc-7.10 build.

@@ -19,6 +19,7 @@ module Unbound.Generics.LocallyNameless.Rec
        , TRec (..)
        ) where
 
+import Control.DeepSeq (NFData(..))
 import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless.Alpha
@@ -30,6 +31,9 @@ import Unbound.Generics.LocallyNameless.Bind
 -- Agda's dot notation.
 newtype Rec p = Rec p
               deriving (Generic, Eq)
+
+instance NFData p => NFData (Rec p) where
+  rnf (Rec p) = rnf p `seq` ()
 
 instance Show a => Show (Rec a) where
   showsPrec _ (Rec a) = showString "[" . showsPrec 0 a . showString "]"

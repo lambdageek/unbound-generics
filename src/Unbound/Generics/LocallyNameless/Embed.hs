@@ -11,6 +11,7 @@
 module Unbound.Generics.LocallyNameless.Embed where
 
 import Control.Applicative (pure, (<$>))
+import Control.DeepSeq (NFData(..))
 import Data.Monoid (mempty)
 import Data.Profunctor (Profunctor(..))
 
@@ -49,6 +50,9 @@ instance IsEmbed (Embed t) where
   type Embedded (Embed t) = t
   embedded = iso (\(Embed t) -> t) Embed
   
+instance NFData t => NFData (Embed t) where
+  rnf (Embed t) = rnf t `seq` ()
+
 instance Show a => Show (Embed a) where
   showsPrec _ (Embed a) = showString "{" . showsPrec 0 a . showString "}"
 

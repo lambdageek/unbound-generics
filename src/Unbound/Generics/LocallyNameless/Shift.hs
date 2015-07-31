@@ -12,6 +12,7 @@
 module Unbound.Generics.LocallyNameless.Shift where
 
 import Control.Applicative
+import Control.DeepSeq (NFData(..))
 import Data.Monoid (Monoid(..))
 
 import Unbound.Generics.LocallyNameless.Alpha (Alpha(..),
@@ -33,6 +34,9 @@ instance IsEmbed e => IsEmbed (Shift e) where
   type Embedded (Shift e) = Embedded e
   embedded = iso (\(Shift e) -> e) Shift . embedded
   
+instance NFData e => NFData (Shift e) where
+  rnf (Shift e) = rnf e `seq` ()
+
 instance Show e => Show (Shift e) where
   showsPrec _ (Shift e) = showString "{" . showsPrec 0 e . showString "}"
 

@@ -13,6 +13,7 @@
 module Unbound.Generics.LocallyNameless.Rebind where
 
 import Control.Applicative ((<*>), (<$>))
+import Control.DeepSeq (NFData(..))
 import Data.Monoid ((<>))
 import GHC.Generics
 
@@ -39,6 +40,9 @@ import Unbound.Generics.LocallyNameless.Alpha
 -- @
 data Rebind p1 p2 = Rebnd p1 p2
                   deriving (Generic, Eq)
+
+instance (NFData p1, NFData p2) => NFData (Rebind p1 p2) where
+  rnf (Rebnd p1 p2) = rnf p1 `seq` rnf p2 `seq` ()
 
 instance (Show p1, Show p2) => Show (Rebind p1 p2) where
   showsPrec paren (Rebnd p1 p2) =
