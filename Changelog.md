@@ -3,6 +3,8 @@
 * Provide `NFData` instances for all the combinators.
   Depend on 'deepseq'
 
+* Start benchmarking some of the operations (particularly `unbind`).
+
 # 0.1.2.1
 
 * Fix ghc-7.10 build.
