@@ -1,5 +1,11 @@
 # 0.2
 
+* Incorporating some of the extras/oversights from
+  [clash-lib Unbound.Generics.LocallyNameless.Extra](https://github.com/clash-lang/clash-compiler/blob/master/clash-lib/src/Unbound/Generics/LocallyNameless/Extra.hs)
+
+	* Make `Embed` an instance of `Ord`
+	* `NFData` instances (see below)
+
 * Re-implement `freshen'` and `gfreshen` using a free monad to give
   GHC a chance to inline it all away.  This changes the type of
   `gfreshen`.  Major version bump.

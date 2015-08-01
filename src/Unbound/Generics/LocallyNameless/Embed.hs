@@ -32,7 +32,7 @@ import Unbound.Generics.LocallyNameless.Internal.Iso (iso)
 --   (You may also use the functions 'embed' and 'unembed', which
 --   additionally can construct or destruct any number of enclosing
 --   'Shift's at the same time.)
-newtype Embed t = Embed t deriving (Eq, Generic)
+newtype Embed t = Embed t deriving (Eq, Ord, Generic)
 
 class IsEmbed e where
   -- | The term type embedded in the embedding 'e'
