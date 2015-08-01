@@ -45,6 +45,10 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , gfreshen
   , glfreshen
   , gacompare
+    -- ** Interal helpers for gfreshen
+  , FFM
+  , liftFFM
+  , retractFFM
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
@@ -244,25 +248,32 @@ newtype FFM f a = FFM { runFFM :: forall r . (a -> r) -> (f r -> r) -> r }
 
 instance Functor (FFM f) where
   fmap f (FFM h) = FFM (\r j -> h (r . f) j)
+  {-# INLINE fmap #-}
 
 instance Applicative (FFM f) where
   pure = return
   (FFM h) <*> (FFM k) = FFM (\r j -> h (\f -> k (r . f) j) j)
+  {-# INLINE (<*>) #-}
 
 instance Monad (FFM f) where
   return x = FFM (\r _j -> r x)
+  {-# INLINE return #-}
   (FFM h) >>= f = FFM (\r j -> h (\x -> runFFM (f x) r j) j)
+  {-# INLINE (>>=) #-}
 
 instance Fresh m => Fresh (FFM m) where
   fresh = liftFFM . fresh 
+  {-# INLINE fresh #-}
 
 liftFFM :: Monad m => m a -> FFM m a
 liftFFM m = FFM (\r j -> j (liftM r m))
+{-# INLINE liftFFM #-}
 
 retractFFM :: Monad m => FFM m a -> m a
 retractFFM (FFM h) = h return j
   where
     j mmf = mmf >>= \mf -> mf
+{-# INLINE retractFFM #-}
 
 -- | The result of @'nthPatFind' a i@ is @Left k@ where @k@ is the
 -- number of names in pattern @a@ with @k < i@ or @Right x@ where @x@
@@ -313,6 +324,7 @@ instance (Alpha c) => GAlpha (K1 i c) where
 
   gswaps ctx perm = K1 . swaps' ctx perm . unK1
   gfreshen ctx = liftM (first K1) . liftFFM . freshen' ctx . unK1
+  {-# INLINE gfreshen #-}
 
   glfreshen ctx (K1 c) cont = lfreshen' ctx c (cont . K1)
 
@@ -334,6 +346,7 @@ instance GAlpha f => GAlpha (M1 i c f) where
 
   gswaps ctx perm = M1 . gswaps ctx perm . unM1
   gfreshen ctx = liftM (first M1) . gfreshen ctx . unM1
+  {-# INLINE gfreshen #-}
 
   glfreshen ctx (M1 f) cont =
     glfreshen ctx f (cont . M1)
@@ -356,6 +369,7 @@ instance GAlpha U1 where
 
   gswaps _ctx _perm _ = U1
   gfreshen _ctx _ = return (U1, mempty)
+  {-# INLINE gfreshen #-}
 
   glfreshen _ctx _ cont = cont U1 mempty
 
@@ -377,6 +391,7 @@ instance GAlpha V1 where
 
   gswaps _ctx _perm _ = undefined
   gfreshen _ctx _ = return (undefined, mempty)
+  {-# INLINE gfreshen #-}
 
   glfreshen _ctx _ cont = cont undefined mempty
 
@@ -411,6 +426,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
     ~(g', perm2) <- gfreshen ctx g
     ~(f', perm1) <- gfreshen ctx (gswaps ctx perm2 f)
     return (f' :*: g', perm1 <> perm2)
+  {-# INLINE gfreshen #-}
 
   glfreshen ctx (f :*: g) cont =
     glfreshen ctx g $ \g' perm2 ->
@@ -450,6 +466,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
 
   gfreshen ctx (L1 f) = liftM (first L1) (gfreshen ctx f)
   gfreshen ctx (R1 f) = liftM (first R1) (gfreshen ctx f)
+  {-# INLINE gfreshen #-}
   
   glfreshen ctx (L1 f) cont =
     glfreshen ctx f (cont . L1)

@@ -1,4 +1,10 @@
-# 0.1.3
+# 0.2
+
+* Re-implement `freshen'` and `gfreshen` using a free monad to give
+  GHC a chance to inline it all away.  This changes the type of
+  `gfreshen`.  Major version bump.
+
+	* Expose `FFM`, `liftFFM` and `retractFFM`
 
 * Provide `NFData` instances for all the combinators.
   Depend on 'deepseq'

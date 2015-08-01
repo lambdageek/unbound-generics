@@ -74,6 +74,7 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
     (p', perm1) <- freshen' (patternCtx ctx) p
     (t', perm2) <- freshen' (incrLevelCtx ctx) (swaps' (incrLevelCtx ctx) perm1 t)
     return (B p' t', perm1 <> perm2)
+  {-# INLINE freshen' #-}
 
   lfreshen' ctx (B p t) cont =
     lfreshen' (patternCtx ctx) p $ \p' pm1 ->
