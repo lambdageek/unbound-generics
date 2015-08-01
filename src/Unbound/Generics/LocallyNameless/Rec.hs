@@ -7,7 +7,7 @@
 -- Stability  : experimental
 --
 -- The pattern @'Rec' p@ binds the names in @p@ like @p@ itself would,
--- but additinoally, the names in @p@ are scope over @p@.
+-- but additionally, the names in @p@ are scope over @p@.
 --
 -- The term @'TRec' p@ is shorthand for @'Bind' (Rec p) ()@
 {-# LANGUAGE DeriveGeneric #-}
@@ -19,6 +19,7 @@ module Unbound.Generics.LocallyNameless.Rec
        , TRec (..)
        ) where
 
+import Control.DeepSeq (NFData(..))
 import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless.Alpha
@@ -30,6 +31,9 @@ import Unbound.Generics.LocallyNameless.Bind
 -- Agda's dot notation.
 newtype Rec p = Rec p
               deriving (Generic, Eq)
+
+instance NFData p => NFData (Rec p) where
+  rnf (Rec p) = rnf p `seq` ()
 
 instance Show a => Show (Rec a) where
   showsPrec _ (Rec a) = showString "[" . showsPrec 0 a . showString "]"
@@ -52,6 +56,9 @@ instance Show a => Show (TRec a) where
 instance Alpha p => Alpha (Rec p) where
   isTerm _ = False
   isPat (Rec p) = isPat p
+
+  nthPatFind (Rec p) i = nthPatFind p i
+  namePatFind (Rec p) x = namePatFind p x
 
   open ctx b (Rec p) = Rec (open (incrLevelCtx ctx) b p)
   close ctx b (Rec p) = Rec (close (incrLevelCtx ctx) b p)

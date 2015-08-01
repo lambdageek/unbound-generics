@@ -20,6 +20,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , inconsistentDisjointSet
   , singletonDisjointSet
   , isConsistentDisjointSet
+  , isNullDisjointSet
   -- * Implementation details
   , NthPatFind
   , NamePatFind
@@ -29,6 +30,8 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , termCtx
   , isTermCtx
   , incrLevelCtx
+  , decrLevelCtx
+  , isZeroLevelCtx
   -- * Internal
   , gaeq
   , gfvAny
@@ -93,6 +96,14 @@ isTermCtx _                           = False
 incrLevelCtx :: AlphaCtx -> AlphaCtx
 incrLevelCtx ctx = ctx { ctxLevel = 1 + ctxLevel ctx }
 
+-- | Decrement the number of binders that we are operating under.
+decrLevelCtx :: AlphaCtx -> AlphaCtx
+decrLevelCtx ctx = ctx { ctxLevel = ctxLevel ctx - 1 }
+
+-- | Are we operating under no binders?
+isZeroLevelCtx :: AlphaCtx -> Bool
+isZeroLevelCtx ctx = ctxLevel ctx == 0
+
 -- | A @DisjointSet a@ is a 'Just' a list of distinct @a@s.  In addition to a monoidal
 -- structure, a disjoint set also has an annihilator 'inconsistentDisjointSet'.
 --
@@ -127,6 +138,11 @@ disjointLists xs ys = null (intersect xs ys)
 isConsistentDisjointSet :: DisjointSet a -> Bool
 isConsistentDisjointSet (DisjointSet Nothing) = False
 isConsistentDisjointSet _ = True
+
+-- | @isNullDisjointSet@ return @True@ iff the given disjoint set is 'mempty'.
+isNullDisjointSet :: DisjointSet a -> Bool
+isNullDisjointSet (DisjointSet (Just [])) = True
+isNullDisjointSet _ = False
 
 -- | Types that are instances of @Alpha@ may participate in name representation.
 --

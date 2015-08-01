@@ -14,9 +14,8 @@ import Calc
 
 import Test.Tasty
 import Test.Tasty.HUnit
-
-assertAeq :: (Alpha t, Show t) => t -> t -> Assertion
-assertAeq x y = assertBool (show x ++ " not alpha equivalent to " ++ show y) (x `aeq` y)
+  
+import AlphaAssertions
 
 test_ex1 :: TestTree
 test_ex1 = testCase "example 1" $ assertAeq (runWhnf emptyEnv ex1) (Just $ C 3)

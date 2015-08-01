@@ -18,6 +18,7 @@ module Unbound.Generics.LocallyNameless.Bind (
   ) where
 
 import Control.Applicative (Applicative(..), (<$>))
+import Control.DeepSeq (NFData(..))
 import Data.Monoid ((<>))
 
 import GHC.Generics (Generic)
@@ -32,6 +33,9 @@ import Unbound.Generics.LocallyNameless.Alpha
 -- 'Unbound.Generics.LocallyNameless.Operations.lunbind'
 data Bind p t = B p t
               deriving (Generic)
+
+instance (NFData p, NFData t) => NFData (Bind p t) where
+  rnf (B p t) = rnf p `seq` rnf t `seq` ()
 
 instance (Show p, Show t) => Show (Bind p t) where
   showsPrec prec (B p t) =

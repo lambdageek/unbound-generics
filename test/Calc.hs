@@ -14,6 +14,7 @@ import GHC.Generics (Generic)
 
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf)
+import Unbound.Generics.LocallyNameless.TH
 
 -- variables will range over expressions
 type Var = Name Expr

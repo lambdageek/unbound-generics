@@ -1,3 +1,30 @@
+# 0.1.3
+
+* Provide `NFData` instances for all the combinators.
+  Depend on 'deepseq'
+
+* Start benchmarking some of the operations (particularly `unbind`).
+
+# 0.1.2.1
+
+* Fix ghc-7.10 build.
+* Haddock cleanup.
+
+# 0.1.2
+
+* Added `IsEmbed` typeclass
+
+    * Depend on 'profunctors'
+
+* Changed `embed` and `unembed` to work over any `IsEmbed` type.
+
+* Added `Shift` type for shifting the scope of embedded terms out one level.
+
+# 0.1.1
+
+* Added `isNullDisjointSet` function.
+* Implement a TH `makeClosedAlpha` splice for constructing trivial leaf instances.
+
 # 0.1
 
 * Add `acompare` functiona and `acompare'` method to `Alpha` typeclass.  (christiaanb)

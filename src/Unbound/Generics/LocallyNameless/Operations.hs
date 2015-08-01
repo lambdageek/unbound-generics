@@ -29,6 +29,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , rebind
        , unrebind
        , Embed(..)
+       , IsEmbed(..)
        , embed
        , unembed
          -- * Recursive bindings
@@ -51,10 +52,12 @@ import Unbound.Generics.LocallyNameless.Fresh
 import Unbound.Generics.LocallyNameless.LFresh
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Bind
-import Unbound.Generics.LocallyNameless.Embed (Embed(..))
+import Unbound.Generics.LocallyNameless.Embed (Embed(..), IsEmbed(..))
 import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.LocallyNameless.Rec
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, justFiltered)
+import Unbound.Generics.LocallyNameless.Internal.Lens (view)
+import Unbound.Generics.LocallyNameless.Internal.Iso (from)
 import Unbound.Generics.PermM
 
 -- | @'aeq' t1 t2@ returns @True@ iff @t1@ and @t2@ are alpha-equivalent terms.
@@ -184,13 +187,13 @@ rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
 unrebind :: (Alpha p1, Alpha p2) => Rebind p1 p2 -> (p1, p2)
 unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
 
--- | An alias for 'Embed'
-embed :: t -> Embed t
-embed = Embed
+-- | Embeds a term in an 'Embed', or an 'Embed' under some number of 'Unbound.Generics.LocallyNameless.Shift.Shift' constructors.
+embed :: IsEmbed e => Embedded e -> e
+embed e = view (from embedded) e
 
 -- | @'unembed' p@ extracts the term embedded in the pattern @p@.
-unembed :: Embed t -> t
-unembed (Embed t) = t
+unembed :: IsEmbed e => e -> Embedded e
+unembed e = view embedded e
 
 -- | Constructor for recursive abstractions.
 trec :: Alpha p => p -> TRec p

@@ -27,6 +27,7 @@ module Unbound.Generics.LocallyNameless.Name
        , AnyName(..)
        ) where
 
+import Control.DeepSeq (NFData(..))
 import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics (Generic)
 
@@ -48,6 +49,10 @@ import GHC.Generics (Generic)
 data Name a = Fn String !Integer    -- free names
             | Bn !Integer !Integer  -- bound names / binding level + pattern index
             deriving (Eq, Ord, Typeable, Generic)
+
+instance NFData (Name a) where
+  rnf (Fn s n) = rnf s `seq` rnf n `seq` ()
+  rnf (Bn i j) = rnf i `seq` rnf j `seq` ()
 
 -- | Returns 'True' iff the given @Name a@ is free.
 isFreeName :: Name a -> Bool
