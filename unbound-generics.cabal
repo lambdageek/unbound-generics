@@ -29,7 +29,8 @@ extra-source-files:  examples/*.hs,
                      README.md,
                      Changelog.md
 cabal-version:       >=1.10
-
+tested-with: GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.2
+             
 library
   exposed-modules:     Unbound.Generics.LocallyNameless
                        Unbound.Generics.LocallyNameless.Name
@@ -104,3 +105,4 @@ Benchmark benchmark-unbound-generics
 source-repository head
   type:                git
   location:            git://github.com/lambdageek/unbound-generics.git
+
