@@ -92,7 +92,7 @@ prop_fv_spec t = toListOf fv t === toListOf fvSpec t
 -- if a name is already free opening it has no effect
 prop_open_idempotent :: T Int -> Property
 prop_open_idempotent t =
-  forAll (arbVarsOf t) $ \v -> open initialCtx v t =~= t
+  forAll (arbVarsOf t) $ \v -> open initialCtx (nthPatFind v) t =~= t
 
 -- if you close over a variable, then it is no longer free.
 prop_close_binds :: T Int -> Property

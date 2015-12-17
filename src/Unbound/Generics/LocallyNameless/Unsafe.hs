@@ -20,5 +20,5 @@ import Unbound.Generics.LocallyNameless.Bind
 -- | A destructor for binders that does /not/ guarantee fresh
 --   names for the binders.
 unsafeUnbind :: (Alpha p, Alpha t) => Bind p t -> (p, t)
-unsafeUnbind (B p t) = (p, open initialCtx p t)
+unsafeUnbind (B p t) = (p, open initialCtx (nthPatFind p) t)
        

@@ -176,8 +176,8 @@ class (Show a) => Alpha a where
   {-# INLINE close #-}
 
   -- | Replace bound names by free names.
-  open :: Alpha b => AlphaCtx -> b -> a -> a
-  default open :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
+  open :: AlphaCtx -> NthPatFind -> a -> a
+  default open :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> NthPatFind -> a -> a
   open c b = to . gopen c b . from
   {-# INLINE open #-}
 
@@ -304,7 +304,7 @@ class GAlpha f where
   gfvAny :: (Contravariant g, Applicative g) => AlphaCtx -> (AnyName -> g AnyName) -> f a -> g (f a)
 
   gclose :: Alpha b => AlphaCtx -> b -> f a -> f a
-  gopen :: Alpha b => AlphaCtx -> b -> f a -> f a
+  gopen :: AlphaCtx -> NthPatFind -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
   gisTerm :: f a -> Bool
@@ -683,7 +683,7 @@ instance Typeable a => Alpha (Name a) where
 
   open ctx b a@(Bn l k) =
     if ctxMode ctx == Term && ctxLevel ctx == l
-    then case nthPatFind b k of
+    then case b k of
       Right (AnyName nm) -> case gcast nm of
         Just nm' -> nm'
         Nothing -> error "LocallyNameless.open: inconsistent sorts"

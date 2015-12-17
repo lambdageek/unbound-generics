@@ -118,7 +118,7 @@ bind p t = B p (close initialCtx p t)
 unbind :: (Alpha p, Alpha t, Fresh m) => Bind p t -> m (p, t)
 unbind (B p t) = do
   (p', _) <- freshen p
-  return (p', open initialCtx p' t)
+  return (p', open initialCtx (nthPatFind p') t)
 
 -- | @lunbind@ opens a binding in an 'LFresh' monad, ensuring that the
 --   names chosen for the binders are /locally/ fresh.  The components
@@ -130,7 +130,7 @@ unbind (B p t) = do
 --   class.
 lunbind :: (LFresh m, Alpha p, Alpha t) => Bind p t -> ((p, t) -> m c) -> m c
 lunbind (B p t) cont =
-  lfreshen p (\x _ -> cont (x, open initialCtx x t))
+  lfreshen p (\x _ -> cont (x, open initialCtx (nthPatFind x) t))
 
 
 -- | Simultaneously unbind two patterns in two terms, returning 'Nothing' if
@@ -143,8 +143,9 @@ unbind2 (B p1 t1) (B p2 t2) = do
       case mkPerm (toListOf fvAny p2) (toListOf fvAny p1) of
          Just pm -> do
            (p1', pm') <- freshen p1
-           return $ Just (p1', open initialCtx p1' t1,
-                          swaps (pm' <> pm) p2, open initialCtx p1' t2)
+           let npf = nthPatFind p1'
+           return $ Just (p1', open initialCtx npf t1,
+                          swaps (pm' <> pm) p2, open initialCtx npf t2)
          Nothing -> return Nothing
 
 -- | Simultaneously 'lunbind' two patterns in two terms in the 'LFresh' monad,
@@ -160,8 +161,9 @@ lunbind2 (B p1 t1) (B p2 t2) cont =
   case mkPerm (toListOf fvAny p2) (toListOf fvAny p1) of
     Just pm ->
       lfreshen p1 $ \p1' pm' ->
-      cont $ Just (p1', open initialCtx p1' t1,
-                   swaps (pm' <> pm) p2, open initialCtx p1' t2)
+      cont $ let npf = nthPatFind p1'
+             in Just (p1', open initialCtx npf t1,
+                      swaps (pm' <> pm) p2, open initialCtx npf t2)
     Nothing -> cont Nothing
 
 -- | Simultaneously unbind two patterns in two terms, returning 'mzero' if
@@ -185,7 +187,7 @@ rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
 -- must have already been called and all names apropriately
 -- 'freshen'ed.
 unrebind :: (Alpha p1, Alpha p2) => Rebind p1 p2 -> (p1, p2)
-unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) p1 p2)
+unrebind (Rebnd p1 p2) = (p1, open (patternCtx initialCtx) (nthPatFind p1) p2)
 
 -- | Embeds a term in an 'Embed', or an 'Embed' under some number of 'Unbound.Generics.LocallyNameless.Shift.Shift' constructors.
 embed :: IsEmbed e => Embedded e -> e

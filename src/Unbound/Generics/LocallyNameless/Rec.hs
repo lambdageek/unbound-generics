@@ -71,4 +71,4 @@ rec p = Rec (close (patternCtx initialCtx) p p)
 
 -- | Destructor for recursive patterns.
 unrec :: Alpha p => Rec p -> p
-unrec (Rec p) = open (patternCtx initialCtx) p p
+unrec r@(Rec p) = open (patternCtx initialCtx) (nthPatFind r) p
