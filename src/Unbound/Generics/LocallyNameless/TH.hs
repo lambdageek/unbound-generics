@@ -36,7 +36,7 @@ import Unbound.Generics.LocallyNameless.Alpha (Alpha(..))
 -- --   close _ _ = id
 -- --   open _ _ = id
 -- --   isPat _ = mempty
--- --   isTerm _ = True
+-- --   isTerm _ = mempty
 -- --   nthPatFind _ = mempty
 -- --   namePatFind _ _ = mempty
 -- --   swaps' _ _ = id
@@ -56,7 +56,7 @@ makeClosedAlpha tyName = do
              , valueD 'close               [e| \_ctx _b     -> id                 |]
              , valueD 'open                [e| \_ctx _b     -> id                 |]
              , valueD 'isPat               [e| \_           -> mempty             |]
-             , valueD 'isTerm              [e| \_           -> True               |]
+             , valueD 'isTerm              [e| \_           -> mempty             |]
              , valueD 'nthPatFind          [e| \_           -> mempty             |]
              , valueD 'namePatFind         [e| \_           -> mempty             |]
              , valueD (mkName "swaps'")    [e| \_ctx _p     -> id                 |]

@@ -14,7 +14,7 @@ module Unbound.Generics.LocallyNameless.Rebind where
 
 import Control.Applicative ((<*>), (<$>))
 import Control.DeepSeq (NFData(..))
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), All(..))
 import GHC.Generics
 
 import Unbound.Generics.LocallyNameless.Alpha
@@ -52,7 +52,7 @@ instance (Show p1, Show p2) => Show (Rebind p1 p2) where
                            . showsPrec 0 p2)
 
 instance (Alpha p1, Alpha p2) => Alpha (Rebind p1 p2) where
-  isTerm _ = False
+  isTerm _ = All False
 
   isPat (Rebnd p1 p2) = isPat p1 <> isPat p2
 

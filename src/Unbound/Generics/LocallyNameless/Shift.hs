@@ -13,7 +13,7 @@ module Unbound.Generics.LocallyNameless.Shift where
 
 import Control.Applicative
 import Control.DeepSeq (NFData(..))
-import Data.Monoid (Monoid(..))
+import Data.Monoid (Monoid(..), All(..))
 
 import Unbound.Generics.LocallyNameless.Alpha (Alpha(..),
                                                decrLevelCtx, isTermCtx,
@@ -43,7 +43,7 @@ instance Show e => Show (Shift e) where
 instance Alpha e => Alpha (Shift e) where
   isPat (Shift e) = if (isEmbed e) then mempty else inconsistentDisjointSet
 
-  isTerm _ = False
+  isTerm _ = All False
 
   isEmbed (Shift e) = isEmbed e
 

@@ -22,6 +22,8 @@ module Unbound.Generics.LocallyNameless.Rec
 import Control.DeepSeq (NFData(..))
 import GHC.Generics (Generic)
 
+import Data.Monoid(All(..))
+
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Bind
 
@@ -54,7 +56,7 @@ instance Show a => Show (TRec a) where
 
 
 instance Alpha p => Alpha (Rec p) where
-  isTerm _ = False
+  isTerm _ = All False
   isPat (Rec p) = isPat p
 
   nthPatFind (Rec p) = nthPatFind p

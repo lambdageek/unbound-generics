@@ -19,7 +19,7 @@ module Unbound.Generics.LocallyNameless.Bind (
 
 import Control.Applicative (Applicative(..), (<$>))
 import Control.DeepSeq (NFData(..))
-import Data.Monoid ((<>))
+import Data.Monoid ((<>), All(..))
 
 import GHC.Generics (Generic)
 
@@ -55,7 +55,7 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
 
   isPat _ = inconsistentDisjointSet
 
-  isTerm (B p t) = isConsistentDisjointSet (isPat p) && isTerm t
+  isTerm (B p t) = (All $ isConsistentDisjointSet $ isPat p) <> isTerm t
 
   close ctx b (B p t) =
     B (close (patternCtx ctx) b p) (close (incrLevelCtx ctx) b t)

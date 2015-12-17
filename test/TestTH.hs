@@ -42,7 +42,7 @@ test_TH = testGroup "TH makeClosedAlpha splice"
           , testCase "TH fvAny kG" $ assertEqual "" (toListOf fvAny kG) []
           , testCase "TH close" $ assertEqual "" (close initialCtx (namePatFind emptyPat) kt) kt
           , testCase "TH open" $ assertEqual "" (open initialCtx (nthPatFind emptyPat) kG) kG
-          , testCase "TH isTerm" $ assertEqual "" (isTerm kF) True
+          , testCase "TH isTerm" $ assertEqual "" (isTerm kF) mempty
           , testCase "TH isPat"
             $ assertBool "isNullDisjointSEt (isPat kF)" (isNullDisjointSet $ isPat kF)
           ]

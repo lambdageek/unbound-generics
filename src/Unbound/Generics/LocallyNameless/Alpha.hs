@@ -58,7 +58,7 @@ import Data.Function (on)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Foldable (Foldable(..))
 import Data.List (intersect)
-import Data.Monoid (Monoid(..), (<>))
+import Data.Monoid (Monoid(..), (<>), All(..))
 import Data.Ratio (Ratio)
 import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics
@@ -188,8 +188,8 @@ class (Show a) => Alpha a where
   {-# INLINE isPat #-}
 
   -- | @isPat x@ dynamically checks whether @x@ can be used as a valid term.
-  isTerm :: a -> Bool
-  default isTerm :: (Generic a, GAlpha (Rep a)) => a -> Bool
+  isTerm :: a -> All
+  default isTerm :: (Generic a, GAlpha (Rep a)) => a -> All
   isTerm = gisTerm . from
   {-# INLINE isTerm #-}
 
@@ -325,7 +325,7 @@ class GAlpha f where
   gopen :: AlphaCtx -> NthPatFind -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
-  gisTerm :: f a -> Bool
+  gisTerm :: f a -> All
 
   gnthPatFind :: f a -> NthPatFind
   gnamePatFind :: f a -> NamePatFind
@@ -412,7 +412,7 @@ instance GAlpha U1 where
   gopen _ctx _b _ = U1
 
   gisPat _ = mempty
-  gisTerm _ = True
+  gisTerm _ = mempty
 
   gnthPatFind _ = mempty
   gnamePatFind _ = mempty
@@ -435,7 +435,7 @@ instance GAlpha V1 where
   gopen _ctx _b _ = undefined
 
   gisPat _ = mempty
-  gisTerm _ = False
+  gisTerm _ = mempty
 
   gnthPatFind _ = mempty
   gnamePatFind _ = mempty
@@ -464,7 +464,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
 
   gisPat (f :*: g) = gisPat f <> gisPat g
   {-# INLINE gisPat #-}
-  gisTerm (f :*: g) = gisTerm f && gisTerm g
+  gisTerm (f :*: g) = gisTerm f <> gisTerm g
   {-# INLINE gisTerm #-}
 
   gnthPatFind (f :*: g) = gnthPatFind f <> gnthPatFind g
@@ -556,7 +556,7 @@ instance Alpha Int where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -576,7 +576,7 @@ instance Alpha Char where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -596,7 +596,7 @@ instance Alpha Integer where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -616,7 +616,7 @@ instance Alpha Float where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -636,7 +636,7 @@ instance Alpha Double where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -656,7 +656,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   open _ctx _b i = i
 
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind _ = mempty
   namePatFind _ = mempty
@@ -717,7 +717,7 @@ instance Typeable a => Alpha (Name a) where
             then singletonDisjointSet (AnyName n)
             else inconsistentDisjointSet
 
-  isTerm _ = True
+  isTerm _ = mempty
 
   nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right (AnyName nm) else Left $! i-1
@@ -777,7 +777,7 @@ instance Alpha AnyName where
                                   then nfn n
                                   else pure n
 
-  isTerm _ = True
+  isTerm _ = mempty
 
   isPat n@(AnyName nm) = if isFreeName nm
                          then singletonDisjointSet n

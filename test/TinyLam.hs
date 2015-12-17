@@ -48,7 +48,7 @@ instance Alpha ArithOp where
   close _ctx _b x = x
   open _ctx _b x = x
   isPat _ = mempty
-  isTerm _ = True
+  isTerm _ = mempty
   nthPatFind _ = mempty
   namePatFind _ = mempty
 

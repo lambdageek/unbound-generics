@@ -12,7 +12,7 @@ module Unbound.Generics.LocallyNameless.Embed where
 
 import Control.Applicative (pure, (<$>))
 import Control.DeepSeq (NFData(..))
-import Data.Monoid (mempty)
+import Data.Monoid (mempty, All(..))
 import Data.Profunctor (Profunctor(..))
 
 import GHC.Generics (Generic)
@@ -57,11 +57,11 @@ instance Show a => Show (Embed a) where
   showsPrec _ (Embed a) = showString "{" . showsPrec 0 a . showString "}"
 
 instance Alpha t => Alpha (Embed t) where
-  isPat (Embed t) = if (isTerm t) then mempty else inconsistentDisjointSet
+  isPat (Embed t) = if getAll (isTerm t) then mempty else inconsistentDisjointSet
 
-  isTerm _ = False
+  isTerm _ = All False
 
-  isEmbed (Embed t) = isTerm t
+  isEmbed (Embed t) = getAll (isTerm t)
 
   swaps' ctx perm (Embed t) =
     if isTermCtx ctx
