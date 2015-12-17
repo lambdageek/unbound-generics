@@ -50,7 +50,7 @@ instance Alpha ArithOp where
   isPat _ = mempty
   isTerm _ = True
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p x = x
   freshen' _ctx x = return (x, mempty)

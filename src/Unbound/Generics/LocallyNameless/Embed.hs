@@ -97,6 +97,6 @@ instance Alpha t => Alpha (Embed t) where
     else Embed (open (termCtx ctx) b x)
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   acompare' ctx (Embed x) (Embed y) = acompare' (termCtx ctx) x y

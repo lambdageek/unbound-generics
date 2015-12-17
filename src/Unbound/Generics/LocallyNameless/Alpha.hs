@@ -23,7 +23,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , isNullDisjointSet
   -- * Implementation details
   , NthPatFind(..)
-  , NamePatFind
+  , NamePatFind(..)
   , AlphaCtx
   , initialCtx
   , patternCtx
@@ -301,8 +301,19 @@ instance Monoid NthPatFind where
 -- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
 -- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
 -- in @a@
-type NamePatFind = AnyName -> Either Integer Integer -- Left - names skipped over
-                                                     -- Right - index of the name we found
+newtype NamePatFind = NamePatFind { runNamePatFind :: AnyName
+                                                      -- Left - names skipped over
+                                                      -- Right - index of the name we found
+                                                      -> Either Integer Integer }
+
+instance Monoid NamePatFind where
+  mempty = NamePatFind (\_ -> Left 0)
+  mappend (NamePatFind f) (NamePatFind g) =
+    NamePatFind $ \nm -> case f nm of
+    ans@Right {} -> ans
+    Left n -> case g nm of
+      Left m -> Left $! n + m
+      Right i -> Right $! n + i
 
 -- | The "Generic" representation version of 'Alpha'
 class GAlpha f where
@@ -404,7 +415,7 @@ instance GAlpha U1 where
   gisTerm _ = True
 
   gnthPatFind _ = mempty
-  gnamePatFind _ _ = Left 0
+  gnamePatFind _ = mempty
 
   gswaps _ctx _perm _ = U1
   gfreshen _ctx _ = return (U1, mempty)
@@ -427,7 +438,7 @@ instance GAlpha V1 where
   gisTerm _ = False
 
   gnthPatFind _ = mempty
-  gnamePatFind _ _ = Left 0
+  gnamePatFind _ = mempty
 
   gswaps _ctx _perm _ = undefined
   gfreshen _ctx _ = return (undefined, mempty)
@@ -458,11 +469,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
 
   gnthPatFind (f :*: g) = gnthPatFind f <> gnthPatFind g
   {-# INLINE gnthPatFind #-}
-  gnamePatFind (f :*: g) n = case gnamePatFind f n of
-    Left j -> case gnamePatFind g n of
-      Left i -> Left $! j + i
-      Right k -> Right $! j + k
-    Right k -> Right k
+  gnamePatFind (f :*: g) = gnamePatFind f <> gnamePatFind g
   {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm (f :*: g) =
@@ -552,7 +559,7 @@ instance Alpha Int where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -572,7 +579,7 @@ instance Alpha Char where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -592,7 +599,7 @@ instance Alpha Integer where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -612,7 +619,7 @@ instance Alpha Float where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -632,7 +639,7 @@ instance Alpha Double where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -652,7 +659,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   isTerm _ = True
 
   nthPatFind _ = mempty
-  namePatFind _ _ = Left 0
+  namePatFind _ = mempty
 
   swaps' _ctx _p i = i
   freshen' _ctx i = return (i, mempty)
@@ -699,7 +706,7 @@ instance Typeable a => Alpha (Name a) where
 
   close ctx b a@(Fn _ _) =
     if isTermCtx ctx
-    then case b (AnyName a) of
+    then case runNamePatFind b (AnyName a) of
       Right k -> Bn (ctxLevel ctx) k
       Left _ -> a
     else a
@@ -715,7 +722,7 @@ instance Typeable a => Alpha (Name a) where
   nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right (AnyName nm) else Left $! i-1
 
-  namePatFind nm1 (AnyName nm2) =
+  namePatFind nm1 = NamePatFind $ \(AnyName nm2) ->
     case gcast nm1 of
       Just nm1' -> if nm1' == nm2 then Right 0 else Left 1
       Nothing -> Left 1
@@ -802,10 +809,8 @@ instance Alpha AnyName where
   nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right nm else Left $! i - 1
 
-  namePatFind nmHave nmWant =
-    if nmHave == nmWant
-    then Right 0
-    else Left 1
+  namePatFind nmHave = NamePatFind $ \nmWant ->
+    if nmHave == nmWant then Right 0 else Left 1
 
   acompare' _ x y | x == y = EQ
 
