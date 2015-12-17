@@ -1,3 +1,9 @@
+# 0.3
+
+* Change types of `open` and `close` to take `NthPatFind` and `NamePatFind` instead of generic patterns, update call sites.
+* Add newtype wrappers and Monoid instances for `NthPatFind` and `NamePatFind`
+* Change `isTerm` to return `All` instead of `Bool`
+
 # 0.2
 
 * Incorporating some of the extras/oversights from
