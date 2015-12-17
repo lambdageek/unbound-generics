@@ -170,8 +170,8 @@ class (Show a) => Alpha a where
   {-# INLINE fvAny' #-}
 
   -- | Replace free names by bound names.
-  close :: Alpha b => AlphaCtx -> b -> a -> a
-  default close :: (Generic a, GAlpha (Rep a), Alpha b) => AlphaCtx -> b -> a -> a
+  close :: AlphaCtx -> NamePatFind -> a -> a
+  default close :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> NamePatFind -> a -> a
   close c b = to . gclose c b . from
   {-# INLINE close #-}
 
@@ -303,7 +303,7 @@ class GAlpha f where
 
   gfvAny :: (Contravariant g, Applicative g) => AlphaCtx -> (AnyName -> g AnyName) -> f a -> g (f a)
 
-  gclose :: Alpha b => AlphaCtx -> b -> f a -> f a
+  gclose :: AlphaCtx -> NamePatFind -> f a -> f a
   gopen :: AlphaCtx -> NthPatFind -> f a -> f a
 
   gisPat :: f a -> DisjointSet AnyName
@@ -694,7 +694,7 @@ instance Typeable a => Alpha (Name a) where
 
   close ctx b a@(Fn _ _) =
     if isTermCtx ctx
-    then case namePatFind b (AnyName a) of
+    then case b (AnyName a) of
       Right k -> Bn (ctxLevel ctx) k
       Left _ -> a
     else a

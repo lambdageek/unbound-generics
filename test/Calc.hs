@@ -112,10 +112,10 @@ ex2y :: Expr
 ex2y = V (mkVar "y")
 
 ex2xc :: Expr
-ex2xc = close initialCtx (mkVar "x") ex2x
+ex2xc = close initialCtx (namePatFind (mkVar "x")) ex2x
 
 ex2yc :: Expr
-ex2yc = close initialCtx (mkVar "y") ex2y
+ex2yc = close initialCtx (namePatFind (mkVar "y")) ex2y
 
 ex3x :: Expr
 ex3x = let x = mkVar "x"

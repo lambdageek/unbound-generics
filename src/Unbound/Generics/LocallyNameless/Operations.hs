@@ -109,7 +109,7 @@ swaps = swaps' initialCtx
   
 -- | @'bind' p t@ closes over the variables of pattern @p@ in the term @t@
 bind :: (Alpha p, Alpha t) => p -> t -> Bind p t
-bind p t = B p (close initialCtx p t)
+bind p t = B p (close initialCtx (namePatFind p) t)
 
 -- | @'unbind' b@ lets you descend beneath a binder @b :: 'Bind' p t@
 -- by returning the pair of the pattern @p@ and the term @t@ where the
@@ -179,7 +179,7 @@ unbind2Plus bnd bnd' = maybe mzero return =<< unbind2 bnd bnd'
 -- captures the variables of pattern @p1@ that occur within @p2@ in
 -- addition to providing binding occurrences for all the variables of @p1@ and @p2@
 rebind :: (Alpha p1, Alpha p2) => p1 -> p2 -> Rebind p1 p2
-rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) p1 p2)
+rebind p1 p2 = Rebnd p1 (close (patternCtx initialCtx) (namePatFind p1) p2)
 
 -- | @'unrebind' p@ is the elimination form for 'Rebind'. It is not
 -- monadic (unlike 'unbind') because a @Rebind@ pattern can only occur

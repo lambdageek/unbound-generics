@@ -98,7 +98,7 @@ prop_open_idempotent t =
 prop_close_binds :: T Int -> Property
 prop_close_binds t =
   (not $ null $ toListOf fvAny t) ==>
-  forAll (arbVarsOf t) $ \v -> v /~@ close initialCtx v t
+  forAll (arbVarsOf t) $ \v -> v /~@ close initialCtx (namePatFind v) t
 
 ----------------------------------------
 -- Test group

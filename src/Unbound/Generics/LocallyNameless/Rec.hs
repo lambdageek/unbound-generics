@@ -67,7 +67,7 @@ instance Alpha p => Alpha (TRec p)
 
 -- | Constructor for recursive patterns.
 rec :: Alpha p => p -> Rec p
-rec p = Rec (close (patternCtx initialCtx) p p)
+rec p = Rec (close (patternCtx initialCtx) (namePatFind p) p)
 
 -- | Destructor for recursive patterns.
 unrec :: Alpha p => Rec p -> p
