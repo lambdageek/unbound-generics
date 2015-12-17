@@ -77,10 +77,15 @@ For the most part, I tried to keep the same methods with the same signatures.  H
    The `fv` method returns a `Fold` (in the sense of the [lens](http://hackage.haskell.org/package/lens) library),
    rather than an `Unbound.Util.Collection` instance.  That means you will generally have to write `toListOf fv t` or some    other summary operation.
 
-2. `isPat :: Alpha t => t -> DisjointSet AnyName`
+2. Utility methods in the `Alpha` class have different types.
 
    You should only notice this if you're implementing an instance of `Alpha` by hand (rather than by using the default
-   generic instance).  The original `unbound` returned a `Maybe [AnyName]` here with the same interpretation as `DisjointSet`: `Nothing` means an inconsistency was encountered, or `Just` the free variables of the pattern.
+   generic instance).
+   
+   1. `isPat :: Alpha t => t -> DisjointSet AnyName`
+     The original `unbound` returned a `Maybe [AnyName]` here with the same interpretation as `DisjointSet`: `Nothing` means an inconsistency was encountered, or `Just` the free variables of the pattern.
+   2. `isTerm :: Alpha t => t -> All`
+   3. `open :: Alpha t => AlphaCtx -> NthPatFind -> t -> t`, `close :: Alpha t => AlphaCtx -> NamePatFind -> t -> t` where `NthPatFind` and `NamePatFind` are newtypes
 
 3. `embed :: IsEmbed e => Embedded e -> e` and `unembed :: IsEmbed e => e -> Embedded e`
 
