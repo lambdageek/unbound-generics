@@ -10,6 +10,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module TestTH (test_TH) where
 
+import Data.Monoid(Monoid(..))
+
 import Test.Tasty
 import Test.Tasty.HUnit
 import AlphaAssertions
