@@ -57,8 +57,8 @@ instance Alpha p => Alpha (Rec p) where
   isTerm _ = False
   isPat (Rec p) = isPat p
 
-  nthPatFind (Rec p) i = nthPatFind p i
-  namePatFind (Rec p) x = namePatFind p x
+  nthPatFind (Rec p) = nthPatFind p
+  namePatFind (Rec p) = namePatFind p
 
   open ctx b (Rec p) = Rec (open (incrLevelCtx ctx) b p)
   close ctx b (Rec p) = Rec (close (incrLevelCtx ctx) b p)

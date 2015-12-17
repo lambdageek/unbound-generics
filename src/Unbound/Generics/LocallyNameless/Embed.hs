@@ -96,7 +96,7 @@ instance Alpha t => Alpha (Embed t) where
     then error "LocallyNameless.open on Embed"
     else Embed (open (termCtx ctx) b x)
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   acompare' ctx (Embed x) (Embed y) = acompare' (termCtx ctx) x y

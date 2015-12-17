@@ -22,7 +22,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , isConsistentDisjointSet
   , isNullDisjointSet
   -- * Implementation details
-  , NthPatFind
+  , NthPatFind(..)
   , NamePatFind
   , AlphaCtx
   , initialCtx
@@ -286,10 +286,17 @@ retractFFM (FFM h) = h return j
     j mmf = mmf >>= \mf -> mf
 {-# INLINE retractFFM #-}
 
--- | The result of @'nthPatFind' a i@ is @Left k@ where @k@ is the
--- number of names in pattern @a@ with @k < i@ or @Right x@ where @x@
+-- | The result of @'nthPatFind' a i@ is @Left k@ where @i-k@ is the
+-- number of names in pattern @a@ (with @k < i@) or @Right x@ where @x@
 -- is the @i@th name in @a@
-type NthPatFind = Integer -> Either Integer AnyName
+newtype NthPatFind = NthPatFind { runNthPatFind :: Integer -> Either Integer AnyName }
+
+instance Monoid NthPatFind where
+  mempty = NthPatFind Left
+  mappend (NthPatFind f) (NthPatFind g) =
+    NthPatFind $ \i -> case f i of
+    Left i' -> g i'
+    found@Right {} -> found
 
 -- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
 -- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
@@ -396,7 +403,7 @@ instance GAlpha U1 where
   gisPat _ = mempty
   gisTerm _ = True
 
-  gnthPatFind _ = Left
+  gnthPatFind _ = mempty
   gnamePatFind _ _ = Left 0
 
   gswaps _ctx _perm _ = U1
@@ -419,7 +426,7 @@ instance GAlpha V1 where
   gisPat _ = mempty
   gisTerm _ = False
 
-  gnthPatFind _ = Left
+  gnthPatFind _ = mempty
   gnamePatFind _ _ = Left 0
 
   gswaps _ctx _perm _ = undefined
@@ -449,9 +456,7 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :*: g) where
   gisTerm (f :*: g) = gisTerm f && gisTerm g
   {-# INLINE gisTerm #-}
 
-  gnthPatFind (f :*: g) i = case gnthPatFind f i of
-    Left i' -> gnthPatFind g i'
-    Right ans -> Right ans
+  gnthPatFind (f :*: g) = gnthPatFind f <> gnthPatFind g
   {-# INLINE gnthPatFind #-}
   gnamePatFind (f :*: g) n = case gnamePatFind f n of
     Left j -> case gnamePatFind g n of
@@ -504,12 +509,12 @@ instance (GAlpha f, GAlpha g) => GAlpha (f :+: g) where
   gisTerm (R1 g) = gisTerm g
   {-# INLINE gisTerm #-}
 
-  gnthPatFind (L1 f) i = gnthPatFind f i
-  gnthPatFind (R1 g) i = gnthPatFind g i
+  gnthPatFind (L1 f) = gnthPatFind f
+  gnthPatFind (R1 g) = gnthPatFind g
   {-# INLINE gnthPatFind #-}
 
-  gnamePatFind (L1 f) n = gnamePatFind f n
-  gnamePatFind (R1 g) n = gnamePatFind g n
+  gnamePatFind (L1 f) = gnamePatFind f
+  gnamePatFind (R1 g) = gnamePatFind g
   {-# INLINE gnamePatFind #-}
 
   gswaps ctx perm (L1 f) = L1 (gswaps ctx perm f)
@@ -546,7 +551,7 @@ instance Alpha Int where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -566,7 +571,7 @@ instance Alpha Char where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -586,7 +591,7 @@ instance Alpha Integer where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -606,7 +611,7 @@ instance Alpha Float where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -626,7 +631,7 @@ instance Alpha Double where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -646,7 +651,7 @@ instance (Integral n, Alpha n) => Alpha (Ratio n) where
   isPat _ = mempty
   isTerm _ = True
 
-  nthPatFind _ = Left
+  nthPatFind _ = mempty
   namePatFind _ _ = Left 0
 
   swaps' _ctx _p i = i
@@ -683,7 +688,7 @@ instance Typeable a => Alpha (Name a) where
 
   open ctx b a@(Bn l k) =
     if ctxMode ctx == Term && ctxLevel ctx == l
-    then case b k of
+    then case runNthPatFind b k of
       Right (AnyName nm) -> case gcast nm of
         Just nm' -> nm'
         Nothing -> error "LocallyNameless.open: inconsistent sorts"
@@ -707,7 +712,7 @@ instance Typeable a => Alpha (Name a) where
 
   isTerm _ = True
 
-  nthPatFind nm i =
+  nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right (AnyName nm) else Left $! i-1
 
   namePatFind nm1 (AnyName nm2) =
@@ -794,7 +799,7 @@ instance Alpha AnyName where
 
   close ctx b (AnyName nm) = AnyName (close ctx b nm)
     
-  nthPatFind nm i =
+  nthPatFind nm = NthPatFind $ \i ->
     if i == 0 then Right nm else Left $! i - 1
 
   namePatFind nmHave nmWant =

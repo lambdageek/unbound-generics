@@ -88,8 +88,8 @@ instance Alpha e => Alpha (Shift e) where
          then se
          else Shift (open (decrLevelCtx ctx) b e)
 
-  nthPatFind (Shift e) i = nthPatFind e i
-  namePatFind (Shift e) x = namePatFind e x
+  nthPatFind (Shift e) = nthPatFind e
+  namePatFind (Shift e) = namePatFind e
 
 
   acompare' ctx (Shift x) (Shift y) = acompare' ctx x y
