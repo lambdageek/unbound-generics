@@ -169,7 +169,7 @@ instance (Subst c a) => Subst c [a]
 instance (Subst c a) => Subst c (Maybe a)
 instance (Subst c a, Subst c b) => Subst c (Either a b)
 
-instance Generic a => Subst b (Name a) where subst _ _ = id ; substs _ = id
+instance Subst b (Name a) where subst _ _ = id ; substs _ = id
 instance Subst b AnyName where subst _ _ = id ; substs _ = id
 
 instance (Subst c a) => Subst c (Embed a)
