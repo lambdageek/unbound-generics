@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                unbound-generics
-version:             0.3
+version:             0.3.1
 synopsis:            Support for programming with names and binders using GHC Generics
 description:         Specify the binding structure of your data type with an
                      expressive set of type combinators, and unbound-generics
@@ -12,7 +12,7 @@ description:         Specify the binding structure of your data type with an
                      @Unbound.Generics.LocallyNameless@ to get started.
                      .
                      This is an independent re-implementation of <http://hackage.haskell.org/package/unbound Unbound>
-                     but using <http://www.haskell.org/ghc/docs/latest/html/libraries/base-4.7.0.1/GHC-Generics.html GHC.Generics>
+                     but using <http://www.haskell.org/ghc/docs/latest/html/libraries/base-4.9.0.0/GHC-Generics.html GHC.Generics>
                      instead of <http://hackage.haskell.org/package/RepLib RepLib>.
                      See the accompanying README for some porting notes.
                      
@@ -22,7 +22,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
 maintainer:          aleksey@lambdageek.org
-copyright:           (c) 2014-2015, Aleksey Kliger
+copyright:           (c) 2014-2016, Aleksey Kliger
 category:            Language
 build-type:          Simple
 extra-source-files:  examples/*.hs,

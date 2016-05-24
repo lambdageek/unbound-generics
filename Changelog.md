@@ -1,3 +1,9 @@
+# 0.3.1
+
+* Tested with GHC 8.0.1
+* Removed `Generic b` constraint from `Subst b (Name a)` instance.
+
+
 # 0.3
 
 * Change types of `open` and `close` to take `NthPatFind` and `NamePatFind` instead of generic patterns, update call sites.
