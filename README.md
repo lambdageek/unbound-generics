@@ -14,8 +14,11 @@ handles the rest!  Automatically derives alpha-equivalence, free variable calcul
 
 This is a reimplementation of (parts of) [unbound](http://hackage.haskell.org/package/unbound) but using [GHC generics](http://www.haskell.org/ghc/docs/latest/html/libraries/base-4.7.0.1/GHC-Generics.html) instead of [RepLib](https://hackage.haskell.org/package/RepLib).
 
-## Example
+## Examples
 
+Some examples are in the `examples/` directory in the source.  And also at [unbound-generics on GitHub Pages](https://lambdageek.github.io/unbound-generics)
+
+### Example: Untyped lambda calculus interpreter
 Here is how you would implement call by value evaluation for the untyped lambda calculus:
 
 ```haskell
