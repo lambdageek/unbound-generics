@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="generator" content="pandoc">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <meta name="author" content="Aleksey Kliger">
+  <title>Canonical LF using unbound-generics</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header>
+<h1 class="title">Canonical LF using unbound-generics</h1>
+<h2 class="author">Aleksey Kliger</h2>
+<h3 class="date">June 2016</h3>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#canonical-lf">Canonical LF</a><ul>
+<li><a href="#syntax">Syntax</a></li>
+<li><a href="#hereditary-substitution">Hereditary Substitution</a></li>
+</ul></li>
+<li><a href="#typechecking">Typechecking</a></li>
+<li><a href="#smart-constructors">Smart Constructors</a><ul>
+<li><a href="#example">Example</a></li>
+</ul></li>
+<li><a href="#appendix-lens-utilities">Appendix: Lens utilities</a></li>
+</ul>
+</nav>
+<section id="canonical-lf" class="level1">
+<h1>Canonical LF</h1>
+<p>This is a representation of <a href="http://www.twelf.org/">LF</a> in which all terms are automatically in <em>canonical form</em>. The key idea is to segregate the type families and the terms into <em>atomic</em> and <em>normal</em> forms where the term variables only stand for atomic terms, and not arbitrary ones. Then, a substitution procedure is defined that takes terms in normal form and performs a substitution for a variable while simultaneously normalizing any redices that occur.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="co">{-# LANGUAGE DeriveGeneric, StandaloneDeriving, DeriveDataTypeable,</span>
+<span class="co">    ViewPatterns, RankNTypes, FlexibleContexts, FlexibleInstances,</span>
+<span class="co">    FunctionalDependencies, TypeFamilies</span>
+<span class="co">  #-}</span>
+<span class="kw">module</span> <span class="dt">CanonicalLF</span> <span class="kw">where</span>
+<span class="kw">import </span><span class="dt">Unbound.Generics.LocallyNameless</span>
+<span class="kw">import </span><span class="dt">GHC.Generics</span> (<span class="dt">Generic</span>)
+<span class="kw">import </span><span class="dt">Data.Typeable</span> (<span class="dt">Typeable</span>)
+<span class="kw">import qualified</span> <span class="dt">Data.Map</span> <span class="kw">as</span> <span class="dt">M</span>
+<span class="kw">import </span><span class="dt">Control.Monad.Reader</span>
+<span class="kw">import </span><span class="dt">Control.Monad.Except</span>
+<span class="kw">import </span><span class="dt">Data.Functor.Identity</span>
+<span class="kw">import </span><span class="dt">Control.Applicative</span> (<span class="dt">Const</span>(..))</code></pre></div>
+<section id="syntax" class="level2">
+<h2>Syntax</h2>
+<p>An LF signature introduces type family atoms and constant terms.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Signature</span> <span class="fu">=</span> <span class="dt">NilS</span>
+  <span class="fu">|</span> <span class="dt">SnocAtom</span> (<span class="dt">Rebind</span> <span class="dt">Signature</span> (<span class="dt">Atm</span>, <span class="dt">Embed</span> <span class="dt">Kind</span>))
+  <span class="fu">|</span> <span class="dt">SnocConst</span> (<span class="dt">Rebind</span> <span class="dt">Signature</span> (<span class="dt">Cnst</span>, <span class="dt">Embed</span> <span class="dt">Type</span>))
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>The type families are classified by kinds and may either be plain types, or pi-kinds for families of types indexed by a term variable.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Kind</span> <span class="fu">=</span> <span class="dt">TypeK</span> <span class="fu">|</span> <span class="dt">PiK</span> (<span class="dt">Bind</span> (<span class="dt">Var</span>, <span class="dt">Embed</span> <span class="dt">Type</span>) <span class="dt">Kind</span>)
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>The atomic type families are either type familiy atoms applied to zero or more terms in normal form.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Atm</span> <span class="fu">=</span> <span class="dt">Name</span> <span class="dt">P</span>
+<span class="kw">data</span> <span class="dt">P</span> <span class="fu">=</span> <span class="dt">AtmP</span> <span class="dt">Atm</span> <span class="fu">|</span> <span class="dt">AppP</span> <span class="dt">P</span> <span class="dt">Term</span>
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>Type families in normal form are either atomic type families or dependent product types indexed by a term variable of normal type.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Type</span> <span class="fu">=</span> <span class="dt">PT</span> <span class="dt">P</span> <span class="fu">|</span> <span class="dt">PiT</span> (<span class="dt">Bind</span> (<span class="dt">Var</span>, <span class="dt">Embed</span> <span class="dt">Type</span>) <span class="dt">Type</span>)
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>The atomic terms are either variables or constants applied to zero or more terms in normal form.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Cnst</span> <span class="fu">=</span> <span class="dt">Name</span> <span class="dt">R</span>
+<span class="kw">type</span> <span class="dt">Var</span> <span class="fu">=</span> <span class="dt">Name</span> <span class="dt">R</span>
+<span class="kw">data</span> <span class="dt">R</span> <span class="fu">=</span> <span class="dt">VarR</span> <span class="dt">Var</span> <span class="fu">|</span> <span class="dt">ConstR</span> <span class="dt">Cnst</span> <span class="fu">|</span> <span class="dt">AppR</span> <span class="dt">R</span> <span class="dt">Term</span>
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>A term in normal form is either an atomic term or a lambda abstraction that binds a term variable.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Term</span> <span class="fu">=</span> <span class="dt">RM</span> <span class="dt">R</span> <span class="fu">|</span> <span class="dt">LamM</span> (<span class="dt">Bind</span> <span class="dt">Var</span> <span class="dt">Term</span>)
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>When typechecking kinds, types or terms, new term variables may come into scope. They are collected in contexts.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Context</span> <span class="fu">=</span> <span class="dt">NilC</span>
+             <span class="fu">|</span> <span class="dt">Snoc</span> (<span class="dt">Rebind</span> <span class="dt">Context</span> (<span class="dt">Var</span>, <span class="dt">Embed</span> <span class="dt">Type</span>))
+             <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)</code></pre></div>
+<p>All the syntactic objects are equivalent upto renaming of bound variables.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">Signature</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">Kind</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">P</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">Type</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">R</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">Term</span>
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">Context</span></code></pre></div>
+<p>The metatheory of Canonical LF uses simple types to prove the termination of hereditary substitution (defined below). But they aren't needed in the implementation. (Although it would be interesting to lift them to Haskell kinds and index the terms by the simple types to disallow some malformed terms.)</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">SimpleType</span> <span class="fu">=</span> <span class="dt">AtmS</span> <span class="dt">Atm</span> <span class="fu">|</span> <span class="dt">ArrS</span> <span class="dt">SimpleType</span> <span class="dt">SimpleType</span>
+  <span class="kw">deriving</span> (<span class="dt">Show</span>, <span class="dt">Generic</span>, <span class="dt">Typeable</span>)
+
+<span class="kw">instance</span> <span class="dt">Alpha</span> <span class="dt">SimpleType</span></code></pre></div>
+</section>
+<section id="hereditary-substitution" class="level2">
+<h2>Hereditary Substitution</h2>
+<p>Variables in Canonical LF stand for atomic terms, but we will need to subtitute terms for them. If we used ordinary capture-avoiding substitution, such substitution would produce redices, which we are precisely what we don't want. However redices will potentially only occur when the variable for which we're substituting occurs at the head of an atomic term.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">isHeadVarR ::</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">R</span> <span class="ot">-&gt;</span> <span class="dt">Bool</span>
+isHeadVarR x (<span class="dt">VarR</span> y) <span class="fu">=</span> x <span class="fu">==</span> y
+isHeadVarR _ (<span class="dt">ConstR</span> _) <span class="fu">=</span> <span class="dt">False</span>
+isHeadVarR x (<span class="dt">AppR</span> r _) <span class="fu">=</span> isHeadVarR x r</code></pre></div>
+<p>Just using a boolean to decide if the variable is at the head of an atomic term is fine, but we can actually partition an atomic term into its head variable or constant together with a spine of applications.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Spine</span> a <span class="fu">=</span> <span class="dt">NilSp</span> a <span class="fu">|</span> <span class="dt">AppSp</span> (<span class="dt">Spine</span> a) <span class="dt">Term</span>
+<span class="kw">data</span> <span class="dt">Head</span> <span class="fu">=</span> <span class="dt">VarH</span> <span class="dt">Var</span> <span class="fu">|</span> <span class="dt">ConstH</span> <span class="dt">Cnst</span></code></pre></div>
+<p>If the variable for which we'll be substituting is at the head we only really care about the spine. Otherwise we have some other variable, or perhaps a constant at the head.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">headSpine ::</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">R</span> <span class="ot">-&gt;</span> <span class="dt">Either</span> (<span class="dt">Spine</span> <span class="dt">Head</span>) (<span class="dt">Spine</span> ())
+headSpine x (<span class="dt">VarR</span> y) <span class="fu">|</span> x <span class="fu">==</span> y    <span class="fu">=</span> <span class="dt">Right</span> (<span class="dt">NilSp</span> ())
+                     <span class="fu">|</span> otherwise <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">NilSp</span> (<span class="dt">VarH</span> y))
+headSpine _ (<span class="dt">ConstR</span> c)           <span class="fu">=</span> <span class="dt">Left</span> (<span class="dt">NilSp</span> (<span class="dt">ConstH</span> c))
+headSpine x (<span class="dt">AppR</span> r m)           <span class="fu">=</span> <span class="kw">case</span> headSpine x r <span class="kw">of</span>
+  <span class="dt">Left</span> s <span class="ot">-&gt;</span> <span class="dt">Left</span> (<span class="dt">AppSp</span> s m)
+  <span class="dt">Right</span> s <span class="ot">-&gt;</span> <span class="dt">Right</span> (<span class="dt">AppSp</span> s m)</code></pre></div>
+<p>Substitution in a kind just carries out substitution in the types. Likewise substutition in normal type families.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substKind ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">Kind</span> <span class="ot">-&gt;</span> m <span class="dt">Kind</span>
+substKind _ _ <span class="dt">TypeK</span> <span class="fu">=</span> return <span class="dt">TypeK</span>
+substKind m x (<span class="dt">PiK</span> bnd) <span class="fu">=</span> <span class="kw">do</span>
+  ((y, unembed <span class="ot">-&gt;</span> a), k) <span class="ot">&lt;-</span> unbind bnd
+  a' <span class="ot">&lt;-</span> substType m x a
+  k' <span class="ot">&lt;-</span> substKind m x k
+  return <span class="fu">$</span> <span class="dt">PiK</span> <span class="fu">$</span> bind (y, embed a') k'
+
+<span class="ot">substType ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">Type</span> <span class="ot">-&gt;</span> m <span class="dt">Type</span>
+substType m x (<span class="dt">PT</span> p) <span class="fu">=</span> <span class="kw">do</span>
+  p' <span class="ot">&lt;-</span> substP m x p
+  return (<span class="dt">PT</span> p')
+substType m x (<span class="dt">PiT</span> bnd) <span class="fu">=</span> <span class="kw">do</span>
+  ((y, unembed <span class="ot">-&gt;</span> a), b) <span class="ot">&lt;-</span> unbind bnd
+  a' <span class="ot">&lt;-</span> substType m x a
+  b' <span class="ot">&lt;-</span> substType m x b
+  return <span class="fu">$</span> <span class="dt">PiT</span> <span class="fu">$</span> bind (y, embed a') b'</code></pre></div>
+<p>Atomic type family application substitutes a term for a variable in the (normal) index terms.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substP ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">P</span> <span class="ot">-&gt;</span> m <span class="dt">P</span>
+substP _ _ (<span class="dt">AtmP</span> a) <span class="fu">=</span> return (<span class="dt">AtmP</span> a)
+substP m x (<span class="dt">AppP</span> p n) <span class="fu">=</span> <span class="kw">do</span>
+  p' <span class="ot">&lt;-</span> substP m x p
+  n' <span class="ot">&lt;-</span> substTerm m x n
+  return (<span class="dt">AppP</span> p' n')</code></pre></div>
+<p>Normal term substitution goes under a lambda (freshness is ensured by the library) and into the atomic term.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substTerm ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> m <span class="dt">Term</span>
+substTerm m x (<span class="dt">RM</span> r) <span class="fu">=</span> substR m x r
+substTerm m x (<span class="dt">LamM</span> bnd) <span class="fu">=</span> <span class="kw">do</span>
+  (y, n) <span class="ot">&lt;-</span> unbind bnd
+  n' <span class="ot">&lt;-</span> substTerm m x n
+  return <span class="fu">$</span> <span class="dt">LamM</span> <span class="fu">$</span> bind y n'</code></pre></div>
+<p>To substitute in an atomic term we separate the head and the spine and proceed according to whether the variable at the head is the one we are substituting for.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substR ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">R</span> <span class="ot">-&gt;</span> m <span class="dt">Term</span>
+substR m x r <span class="fu">=</span>
+  <span class="kw">case</span> headSpine x r <span class="kw">of</span>
+    <span class="dt">Left</span> rsp <span class="ot">-&gt;</span> <span class="dt">RM</span> <span class="fu">&lt;$&gt;</span> substRRsp m x rsp
+    <span class="dt">Right</span> msp <span class="ot">-&gt;</span> substMsp m x msp</code></pre></div>
+<p>If there is another variable or a constant at the head, we will get some kind of atomic term out since the head is unchanged and we only substitute into the index terms.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substRRsp ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">Spine</span> <span class="dt">Head</span> <span class="ot">-&gt;</span> m <span class="dt">R</span>
+substRRsp _ _ (<span class="dt">NilSp</span> h) <span class="fu">=</span> return (headR h)
+substRRsp m x (<span class="dt">AppSp</span> sp n) <span class="fu">=</span> <span class="kw">do</span>
+  n' <span class="ot">&lt;-</span> substTerm m x n
+  r <span class="ot">&lt;-</span> substRRsp m x sp
+  return <span class="fu">$</span> <span class="dt">AppR</span> r n'
+
+<span class="ot">headR ::</span> <span class="dt">Head</span> <span class="ot">-&gt;</span> <span class="dt">R</span>
+headR (<span class="dt">VarH</span> y) <span class="fu">=</span> <span class="dt">VarR</span> y
+headR (<span class="dt">ConstH</span> c) <span class="fu">=</span> <span class="dt">ConstR</span> c</code></pre></div>
+<p>When the variable we care about is at the head, we apply the substitution to the rest of the spine to get a normal term (which, by the metatheory will turn out to be some kind of a lambda), apply the substitution to the index, and then carry out a new substitution of the new index for the variable bound by the lambda to the body of the lambda. This last step is the heredetary part of heredetary substitution. The metatheory guarantees that this process will terminate. (Because the simple type of the body of the lambda is smaller than the simple type of the original term).</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">substMsp ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> <span class="dt">Spine</span> () <span class="ot">-&gt;</span> m <span class="dt">Term</span>
+substMsp m _ (<span class="dt">NilSp</span> ()) <span class="fu">=</span> return m
+substMsp m x (<span class="dt">AppSp</span> s n) <span class="fu">=</span> <span class="kw">do</span>
+  o_ <span class="ot">&lt;-</span> substMsp m x s
+  n' <span class="ot">&lt;-</span> substTerm m x n
+  <span class="kw">case</span> o_ <span class="kw">of</span>
+    <span class="dt">LamM</span> bnd <span class="ot">-&gt;</span> <span class="kw">do</span>
+      (y, o) <span class="ot">&lt;-</span> unbind bnd
+      substTerm n' y o
+    _ <span class="ot">-&gt;</span> error <span class="st">&quot;can't happen&quot;</span></code></pre></div>
+</section>
+</section>
+<section id="typechecking" class="level1">
+<h1>Typechecking</h1>
+<p>We typecheck in an environment that maps type family atoms, term costants and variables to their respective kinds and types.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">data</span> <span class="dt">Env</span> <span class="fu">=</span> <span class="dt">Env</span> { _<span class="ot">envAtm ::</span> <span class="dt">M.Map</span> <span class="dt">Atm</span> <span class="dt">Kind</span>,
+                 _<span class="ot">envConst ::</span> <span class="dt">M.Map</span> <span class="dt">Cnst</span> <span class="dt">Type</span>,
+                 _<span class="ot">envCtx ::</span> <span class="dt">M.Map</span> <span class="dt">Var</span> <span class="dt">Type</span> }</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">emptyEnv ::</span> <span class="dt">Env</span>
+emptyEnv <span class="fu">=</span> <span class="dt">Env</span> M.empty M.empty M.empty</code></pre></div>
+<p>Some lenses to work with the environment</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">envAtm ::</span> <span class="dt">Lens'</span> <span class="dt">Env</span> (<span class="dt">M.Map</span> <span class="dt">Atm</span> <span class="dt">Kind</span>)
+envAtm afb s <span class="fu">=</span> fmap (\atms <span class="ot">-&gt;</span> s { _envAtm <span class="fu">=</span> atms }) <span class="fu">$</span> afb (_envAtm s)
+
+<span class="ot">envCtx ::</span> <span class="dt">Lens'</span> <span class="dt">Env</span> (<span class="dt">M.Map</span> <span class="dt">Var</span> <span class="dt">Type</span>)
+envCtx afb s <span class="fu">=</span> fmap (\ctx <span class="ot">-&gt;</span> s { _envCtx <span class="fu">=</span> ctx } ) <span class="fu">$</span> afb (_envCtx s)
+
+<span class="ot">envConst ::</span> <span class="dt">Lens'</span> <span class="dt">Env</span> (<span class="dt">M.Map</span> <span class="dt">Cnst</span> <span class="dt">Type</span>)
+envConst afb s <span class="fu">=</span> fmap (\sig <span class="ot">-&gt;</span> s { _envConst <span class="fu">=</span> sig} ) <span class="fu">$</span> afb (_envConst s)</code></pre></div>
+<p>And some combinators to perform lookups.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">lookupOver ::</span> (<span class="dt">MonadReader</span> e m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Getting</span> p e p <span class="ot">-&gt;</span> <span class="dt">String</span> <span class="ot">-&gt;</span> (p <span class="ot">-&gt;</span> <span class="dt">Maybe</span> c) <span class="ot">-&gt;</span> m c
+lookupOver l s f <span class="fu">=</span> <span class="kw">do</span>
+  mk <span class="ot">&lt;-</span> views l f
+  <span class="kw">case</span> mk <span class="kw">of</span>
+    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> throwError <span class="fu">$</span> <span class="st">&quot;unbound &quot;</span> <span class="fu">++</span> s
+    <span class="dt">Just</span> c <span class="ot">-&gt;</span> return c
+
+<span class="ot">lookupAtom ::</span> (<span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Atm</span> <span class="ot">-&gt;</span> m <span class="dt">Kind</span>
+lookupAtom <span class="fu">=</span> lookupOver envAtm <span class="st">&quot;atom&quot;</span> <span class="fu">.</span> M.lookup 
+
+<span class="ot">lookupVar ::</span> (<span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Var</span> <span class="ot">-&gt;</span> m <span class="dt">Type</span>
+lookupVar <span class="fu">=</span> lookupOver envCtx <span class="st">&quot;variable&quot;</span> <span class="fu">.</span> M.lookup
+
+<span class="ot">lookupConst ::</span> (<span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Cnst</span> <span class="ot">-&gt;</span> m <span class="dt">Type</span>
+lookupConst <span class="fu">=</span> lookupOver envConst <span class="st">&quot;constant&quot;</span> <span class="fu">.</span> M.lookup</code></pre></div>
+<p>To check a signature we check the kind or type classifying the atom or constant and then continue in an environment extended with the new binding.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">withSigOk ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Signature</span> <span class="ot">-&gt;</span> m r <span class="ot">-&gt;</span> m r
+withSigOk <span class="dt">NilS</span> kont <span class="fu">=</span> kont
+withSigOk (<span class="dt">SnocAtom</span> (unrebind <span class="ot">-&gt;</span> (s, (a, unembed <span class="ot">-&gt;</span> k)))) kont <span class="fu">=</span>
+  withSigOk s <span class="fu">$</span> <span class="kw">do</span>
+  local (set envCtx M.empty) <span class="fu">$</span> wfk k
+  local (over envAtm (M.insert a k)) kont
+withSigOk (<span class="dt">SnocConst</span> (unrebind <span class="ot">-&gt;</span> (s, (c, unembed <span class="ot">-&gt;</span> a)))) kont <span class="fu">=</span>
+  withSigOk s <span class="fu">$</span> <span class="kw">do</span>
+  local (set envCtx M.empty) <span class="fu">$</span> wfType a
+  local (over envConst (M.insert c a)) kont</code></pre></div>
+<p>Kind and normal type formation is unsurprising. Note that PT is only well-formed when the atomic type family is fully applied and is of base kind.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">wfk ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Kind</span> <span class="ot">-&gt;</span> m ()
+wfk <span class="dt">TypeK</span> <span class="fu">=</span> return ()
+wfk (<span class="dt">PiK</span> bnd) <span class="fu">=</span> <span class="kw">do</span>
+  ((x, unembed <span class="ot">-&gt;</span> t), k) <span class="ot">&lt;-</span> unbind bnd
+  wfType t
+  local (over envCtx (M.insert x t)) <span class="fu">$</span> wfk k
+
+<span class="ot">wfType ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Type</span> <span class="ot">-&gt;</span> m ()
+wfType (<span class="dt">PT</span> p) <span class="fu">=</span> <span class="kw">do</span>
+  k <span class="ot">&lt;-</span> inferP p
+  <span class="kw">case</span> k <span class="kw">of</span>
+    <span class="dt">TypeK</span> <span class="ot">-&gt;</span> return ()
+    _ <span class="ot">-&gt;</span> throwError <span class="st">&quot;expected a type&quot;</span>
+wfType (<span class="dt">PiT</span> bnd) <span class="fu">=</span> <span class="kw">do</span>
+  ((x, unembed <span class="ot">-&gt;</span> a), b) <span class="ot">&lt;-</span> unbind bnd
+  wfType a
+  local (over envCtx (M.insert x a)) <span class="fu">$</span> wfType b</code></pre></div>
+<p>For atomic type families we infer their kinds. For atoms we read the kind off from the environment. For applications we infer the kind of the type family (which had better be a pi kind), and then check that the term argument has the expected type and then return the resulting kind where we (heredeterily) substitute the term for the index variable.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">inferP ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">P</span> <span class="ot">-&gt;</span> m <span class="dt">Kind</span>
+inferP (<span class="dt">AtmP</span> atm) <span class="fu">=</span> lookupAtom atm
+inferP (<span class="dt">AppP</span> p m) <span class="fu">=</span> <span class="kw">do</span>
+  k <span class="ot">&lt;-</span> inferP p
+  <span class="kw">case</span> k <span class="kw">of</span>
+    <span class="dt">TypeK</span> <span class="ot">-&gt;</span> throwError <span class="st">&quot;expected a pi kind&quot;</span>
+    <span class="dt">PiK</span> bnd <span class="ot">-&gt;</span> <span class="kw">do</span>
+      ((x, unembed <span class="ot">-&gt;</span> a), k') <span class="ot">&lt;-</span> unbind bnd
+      checkTerm m a
+      substKind m x k'</code></pre></div>
+<p>To check that a term in normal form has the expected normal type, we check that its either a lambda of pi type, or an atomic term of atomic type. The latter ensures that terms are in eta long form by requiring all variables and constants to be fully applied.</p>
+<p>We infer the type of an atomic term (which had better be atomic) and then check that it is alpha-equivalent to the given atomic type. Because the calculus is constructed to only allow terms in normal form, alpha equivalence suffices and we don't have to do any normalization. (We paid that price in heredetary substitution.)</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">checkTerm ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Term</span> <span class="ot">-&gt;</span> <span class="dt">Type</span> <span class="ot">-&gt;</span> m ()
+checkTerm (<span class="dt">LamM</span> bnd) (<span class="dt">PiT</span> bnd') <span class="fu">=</span> <span class="kw">do</span>
+  mmatch <span class="ot">&lt;-</span> unbind2 bnd bnd'
+  <span class="kw">case</span> mmatch <span class="kw">of</span>
+    <span class="dt">Just</span> (x, m, (_, unembed <span class="ot">-&gt;</span> a), b) <span class="ot">-&gt;</span> <span class="kw">do</span>
+      wfType a
+      local (over envCtx (M.insert x a)) <span class="fu">$</span> checkTerm m b
+    <span class="dt">Nothing</span> <span class="ot">-&gt;</span> throwError <span class="st">&quot;did not match&quot;</span>
+checkTerm (<span class="dt">RM</span> r) (<span class="dt">PT</span> p) <span class="fu">=</span> <span class="kw">do</span>
+  t <span class="ot">&lt;-</span> inferTerm r
+  <span class="kw">case</span> t <span class="kw">of</span>
+    (<span class="dt">PT</span> p') <span class="fu">|</span> p <span class="ot">`aeq`</span> p' <span class="ot">-&gt;</span> return ()
+    _ <span class="ot">-&gt;</span> throwError <span class="st">&quot;atomic term doesn't have the expected atomic type.&quot;</span>
+checkTerm (<span class="dt">LamM</span> {}) _ <span class="fu">=</span> throwError <span class="st">&quot;lambda with no-PI type&quot;</span>
+checkTerm (<span class="dt">RM</span> {}) _ <span class="fu">=</span> throwError <span class="st">&quot;atomic term with non-atomic type&quot;</span></code></pre></div>
+<p>To infer the type of a term, we lookup variables and constants in the environment. For applications we ensure that the head has some kind of pi type and then check the index against the argument type, and then return the result type with the argument substituted for the index variable.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">inferTerm ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">R</span> <span class="ot">-&gt;</span> m <span class="dt">Type</span>
+inferTerm (<span class="dt">VarR</span> x) <span class="fu">=</span> lookupVar x
+inferTerm (<span class="dt">ConstR</span> c) <span class="fu">=</span> lookupConst c
+inferTerm (<span class="dt">AppR</span> r m) <span class="fu">=</span> <span class="kw">do</span>
+  p_ <span class="ot">&lt;-</span> inferTerm r
+  <span class="kw">case</span> p_ <span class="kw">of</span>
+    <span class="dt">PiT</span> bnd <span class="ot">-&gt;</span> <span class="kw">do</span>
+      ((x, unembed <span class="ot">-&gt;</span> a), b) <span class="ot">&lt;-</span> unbind bnd
+      checkTerm m a
+      substType m x b
+    <span class="dt">PT</span> {} <span class="ot">-&gt;</span> throwError <span class="st">&quot;expected a function in application position&quot;</span></code></pre></div>
+</section>
+<section id="smart-constructors" class="level1">
+<h1>Smart Constructors</h1>
+<p>This section defines a little DSL for writing Canonical LF terms in Haskell. It's a higher-order encoding that uses haskell variable binding to represent LF binding constructs.</p>
+<p>We use a higher-kinded repr parameter to allow for different sorts of interpretations for this DSL. Although in this example we only build one using the Syn newtype to wrap a fresh-name monad computation that just builds a term in our original AST, above.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">TermSyntax</span> repr r n <span class="fu">|</span> r <span class="ot">-&gt;</span> n, n <span class="ot">-&gt;</span> r <span class="kw">where</span>
+<span class="ot">  lam ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> ((repr r) <span class="ot">-&gt;</span> (repr n)) <span class="ot">-&gt;</span> (repr n)
+<span class="ot">  app ::</span> repr r <span class="ot">-&gt;</span> repr n <span class="ot">-&gt;</span> repr r
+<span class="ot">  rm ::</span> repr r <span class="ot">-&gt;</span> repr n
+
+<span class="kw">newtype</span> <span class="dt">Syn</span> m a <span class="fu">=</span> <span class="dt">Syn</span> {<span class="ot"> unSyn ::</span> m a } 
+
+<span class="kw">instance</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">TermSyntax</span> (<span class="dt">Syn</span> m) <span class="dt">R</span> <span class="dt">Term</span> <span class="kw">where</span>
+  lam hint f <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> <span class="kw">do</span>
+    x <span class="ot">&lt;-</span> fresh (s2n hint)
+    m <span class="ot">&lt;-</span> unSyn <span class="fu">$</span> f (<span class="dt">Syn</span> <span class="fu">$</span> return <span class="fu">$</span> <span class="dt">VarR</span> x)
+    return <span class="fu">$</span> <span class="dt">LamM</span> (bind x m)
+  app r n <span class="fu">=</span> <span class="dt">Syn</span> (<span class="dt">AppR</span> <span class="fu">&lt;$&gt;</span> unSyn r <span class="fu">&lt;*&gt;</span> unSyn n)
+  rm r <span class="fu">=</span> <span class="dt">Syn</span> (<span class="dt">RM</span> <span class="fu">&lt;$&gt;</span> unSyn r)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">class</span>  <span class="dt">TypeSyntax</span> repr p a <span class="fu">|</span> a <span class="ot">-&gt;</span> p, p <span class="ot">-&gt;</span> a <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">TermInType</span> repr<span class="ot"> a ::</span> <span class="fu">*</span>
+  <span class="kw">type</span> <span class="dt">RInType</span> repr<span class="ot"> a ::</span> <span class="fu">*</span>
+<span class="ot">  piT ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> repr a <span class="ot">-&gt;</span> (repr (<span class="dt">RInType</span> repr a) <span class="ot">-&gt;</span> repr a) <span class="ot">-&gt;</span> repr a
+<span class="ot">  arrT ::</span> repr a <span class="ot">-&gt;</span> repr a <span class="ot">-&gt;</span> repr a
+  arrT a b <span class="fu">=</span> piT <span class="st">&quot;_&quot;</span> a (const b)
+<span class="ot">  appP ::</span> repr p <span class="ot">-&gt;</span> repr (<span class="dt">TermInType</span> repr a) <span class="ot">-&gt;</span> repr p
+<span class="ot">  pt ::</span> repr p <span class="ot">-&gt;</span> repr a</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">TypeSyntax</span> (<span class="dt">Syn</span> m) <span class="dt">P</span> <span class="dt">Type</span> <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">TermInType</span> (<span class="dt">Syn</span> m) <span class="dt">Type</span> <span class="fu">=</span> <span class="dt">Term</span>
+  <span class="kw">type</span> <span class="dt">RInType</span> (<span class="dt">Syn</span> m) <span class="dt">Type</span> <span class="fu">=</span> <span class="dt">R</span>
+  piT hint sa f <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> <span class="kw">do</span>
+    x <span class="ot">&lt;-</span> fresh (s2n hint)
+    b <span class="ot">&lt;-</span> unSyn <span class="fu">$</span> f (<span class="dt">Syn</span> <span class="fu">$</span> return <span class="fu">$</span> <span class="dt">VarR</span> x)
+    a <span class="ot">&lt;-</span> unSyn sa
+    return <span class="fu">$</span> <span class="dt">PiT</span> <span class="fu">$</span> bind (x, embed a) b
+  appP p m <span class="fu">=</span> <span class="dt">Syn</span> (<span class="dt">AppP</span> <span class="fu">&lt;$&gt;</span> unSyn p <span class="fu">&lt;*&gt;</span> unSyn m)
+  pt p <span class="fu">=</span> <span class="dt">Syn</span> (<span class="dt">PT</span> <span class="fu">&lt;$&gt;</span> unSyn p)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">KindSyntax</span> repr k <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">TypeInKind</span> repr<span class="ot"> k ::</span> <span class="fu">*</span>
+  <span class="kw">type</span> <span class="dt">RInKind</span> repr<span class="ot"> k ::</span> <span class="fu">*</span>
+<span class="ot">  typeK ::</span> repr k
+<span class="ot">  piK ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> repr (<span class="dt">TypeInKind</span> repr k) <span class="ot">-&gt;</span> (repr (<span class="dt">RInKind</span> repr k) <span class="ot">-&gt;</span> repr k) <span class="ot">-&gt;</span> repr k
+<span class="ot">  arrK ::</span> repr (<span class="dt">TypeInKind</span> repr k) <span class="ot">-&gt;</span> repr k <span class="ot">-&gt;</span> repr k
+  arrK a k <span class="fu">=</span> piK <span class="st">&quot;_&quot;</span> a (const k)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">instance</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">KindSyntax</span> (<span class="dt">Syn</span> m) <span class="dt">Kind</span> <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">TypeInKind</span> (<span class="dt">Syn</span> m) <span class="dt">Kind</span> <span class="fu">=</span> <span class="dt">Type</span>
+  <span class="kw">type</span> <span class="dt">RInKind</span> (<span class="dt">Syn</span> m) <span class="dt">Kind</span> <span class="fu">=</span> <span class="dt">R</span>
+  typeK <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> return <span class="dt">TypeK</span>
+  piK hint sa sk <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> <span class="kw">do</span>
+    x <span class="ot">&lt;-</span> fresh (s2n hint)
+    a <span class="ot">&lt;-</span> unSyn sa
+    k <span class="ot">&lt;-</span> unSyn <span class="fu">$</span> sk (<span class="dt">Syn</span> <span class="fu">$</span> return <span class="fu">$</span> <span class="dt">VarR</span> x)
+    return <span class="fu">$</span> <span class="dt">PiK</span> <span class="fu">$</span> bind (x, embed a) k</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">class</span> <span class="dt">SignatureSyntax</span> repr sig p r <span class="fu">|</span> sig <span class="ot">-&gt;</span> p r <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">KindInSig</span> repr<span class="ot"> sig ::</span> <span class="fu">*</span>
+  <span class="kw">type</span> <span class="dt">TypeInSig</span> repr<span class="ot"> sig ::</span> <span class="fu">*</span>
+<span class="ot">  letAtom ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> repr (<span class="dt">KindInSig</span> repr sig) <span class="ot">-&gt;</span> (repr p <span class="ot">-&gt;</span> repr sig) <span class="ot">-&gt;</span> repr sig
+<span class="ot">  letConstant ::</span> <span class="dt">String</span> <span class="ot">-&gt;</span> repr (<span class="dt">TypeInSig</span> repr sig) <span class="ot">-&gt;</span> (repr r <span class="ot">-&gt;</span> repr sig) <span class="ot">-&gt;</span> repr sig
+<span class="ot">  endSig ::</span> repr sig
+
+<span class="kw">instance</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">SignatureSyntax</span> (<span class="dt">Syn</span> m) (<span class="dt">Signature</span> <span class="ot">-&gt;</span> <span class="dt">Signature</span>) <span class="dt">P</span> <span class="dt">R</span> <span class="kw">where</span>
+  <span class="kw">type</span> <span class="dt">KindInSig</span> (<span class="dt">Syn</span> m) (<span class="dt">Signature</span> <span class="ot">-&gt;</span> <span class="dt">Signature</span>) <span class="fu">=</span> <span class="dt">Kind</span>
+  <span class="kw">type</span> <span class="dt">TypeInSig</span> (<span class="dt">Syn</span> m) (<span class="dt">Signature</span> <span class="ot">-&gt;</span> <span class="dt">Signature</span>) <span class="fu">=</span> <span class="dt">Type</span>
+
+  letAtom hint sk kont <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> <span class="kw">do</span>
+    a <span class="ot">&lt;-</span> fresh (s2n hint)
+    k <span class="ot">&lt;-</span> unSyn sk
+    f <span class="ot">&lt;-</span> unSyn <span class="fu">$</span> kont <span class="fu">$</span> <span class="dt">Syn</span> <span class="fu">$</span> return <span class="fu">$</span> <span class="dt">AtmP</span> a
+    return <span class="fu">$</span> \sig <span class="ot">-&gt;</span> f (<span class="dt">SnocAtom</span> <span class="fu">$</span> rebind sig (a, embed k))
+
+  letConstant hinst st kont <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> <span class="kw">do</span>
+    c <span class="ot">&lt;-</span> fresh (s2n hinst)
+    t <span class="ot">&lt;-</span> unSyn st
+    f <span class="ot">&lt;-</span> unSyn <span class="fu">$</span> kont <span class="fu">$</span> <span class="dt">Syn</span> <span class="fu">$</span> return <span class="fu">$</span> <span class="dt">ConstR</span> c
+    return <span class="fu">$</span> \sig <span class="ot">-&gt;</span> f (<span class="dt">SnocConst</span> <span class="fu">$</span> rebind sig (c, embed t))
+
+  endSig <span class="fu">=</span> <span class="dt">Syn</span> <span class="fu">$</span> return id</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">infixr</span> <span class="dv">6</span> <span class="ot">`arrT`</span>, <span class="ot">`arrK`</span>
+<span class="kw">infixl</span> <span class="dv">6</span> <span class="ot">`appP`</span>, <span class="ot">`app`</span></code></pre></div>
+<section id="example" class="level2">
+<h2>Example</h2>
+<p>An LF signature fragment for first-order logic.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">example1 ::</span> <span class="dt">Fresh</span> m <span class="ot">=&gt;</span> <span class="dt">Syn</span> m (<span class="dt">Signature</span> <span class="ot">-&gt;</span> <span class="dt">Signature</span>)
+example1 <span class="fu">=</span>
+  letAtom <span class="st">&quot;o&quot;</span> typeK <span class="fu">$</span> \o <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;tt&quot;</span> (pt o) <span class="fu">$</span> \tt <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;ff&quot;</span> (pt o) <span class="fu">$</span> \ff <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;not&quot;</span> (pt o <span class="ot">`arrT`</span> pt o) <span class="fu">$</span> \not <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;and&quot;</span> (pt o <span class="ot">`arrT`</span> pt o <span class="ot">`arrT`</span> pt o) <span class="fu">$</span> \and <span class="ot">-&gt;</span>
+  letAtom <span class="st">&quot;nd&quot;</span> (pt o <span class="ot">`arrK`</span> typeK) <span class="fu">$</span> \nd <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;tti&quot;</span> (pt (nd <span class="ot">`appP`</span> rm tt)) <span class="fu">$</span> \tti <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;ffe&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span>
+                       pt (nd <span class="ot">`appP`</span> rm ff)
+                       <span class="ot">`arrT`</span>
+                       pt (nd <span class="ot">`appP`</span> rm a)) <span class="fu">$</span> \ffe <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;noti&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span>
+                         (piT <span class="st">&quot;p&quot;</span> (pt o) <span class="fu">$</span> \p <span class="ot">-&gt;</span>
+                             pt (nd <span class="ot">`appP`</span> rm a)
+                             <span class="ot">`arrT`</span>
+                             pt (nd <span class="ot">`appP`</span> rm p))
+                         <span class="ot">`arrT`</span>
+                         pt (nd <span class="ot">`appP`</span> rm (not <span class="ot">`app`</span> rm a))) <span class="fu">$</span> \noti <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;note&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span> piT <span class="st">&quot;c&quot;</span> (pt o) <span class="fu">$</span> \c <span class="ot">-&gt;</span>
+                         pt (nd <span class="ot">`appP`</span> rm (not <span class="ot">`app`</span> rm a))
+                         <span class="ot">`arrT`</span>
+                         pt (nd <span class="ot">`appP`</span> rm a)
+                         <span class="ot">`arrT`</span>
+                         pt (nd <span class="ot">`appP`</span> rm c)) <span class="fu">$</span> \note <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;andi&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span> piT <span class="st">&quot;b&quot;</span> (pt o) <span class="fu">$</span> \b <span class="ot">-&gt;</span>
+                         pt (nd <span class="ot">`appP`</span> rm a)
+                         <span class="ot">`arrT`</span>
+                         pt (nd <span class="ot">`appP`</span> rm b)
+                         <span class="ot">`arrT`</span>
+                         pt (nd <span class="ot">`appP`</span> rm (and <span class="ot">`app`</span> rm a <span class="ot">`app`</span> rm b))) <span class="fu">$</span> \andi <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;ande1&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span> piT <span class="st">&quot;b&quot;</span> (pt o) <span class="fu">$</span> \b <span class="ot">-&gt;</span>
+                          pt (nd <span class="ot">`appP`</span> rm (and <span class="ot">`app`</span> rm a <span class="ot">`app`</span> rm b))
+                          <span class="ot">`arrT`</span>
+                          pt (nd <span class="ot">`appP`</span> rm a)) <span class="fu">$</span> \ande1 <span class="ot">-&gt;</span>
+  letConstant <span class="st">&quot;ande2&quot;</span> (piT <span class="st">&quot;a&quot;</span> (pt o) <span class="fu">$</span> \a <span class="ot">-&gt;</span> piT <span class="st">&quot;b&quot;</span> (pt o) <span class="fu">$</span> \b <span class="ot">-&gt;</span>
+                          pt (nd <span class="ot">`appP`</span> rm (and <span class="ot">`app`</span> rm a <span class="ot">`app`</span> rm b))
+                          <span class="ot">`arrT`</span>
+                          pt (nd <span class="ot">`appP`</span> rm b)) <span class="fu">$</span> \ande2 <span class="ot">-&gt;</span>
+  endSig</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">checkSynSig ::</span> (<span class="dt">Fresh</span> m, <span class="dt">MonadReader</span> <span class="dt">Env</span> m, <span class="dt">MonadError</span> <span class="dt">String</span> m) <span class="ot">=&gt;</span> <span class="dt">Syn</span> m (<span class="dt">Signature</span> <span class="ot">-&gt;</span> <span class="dt">Signature</span>) <span class="ot">-&gt;</span> m ()
+checkSynSig sig <span class="fu">=</span> <span class="kw">do</span>
+  sigf <span class="ot">&lt;-</span> unSyn sig
+  withSigOk (sigf <span class="dt">NilS</span>) <span class="fu">$</span> return ()</code></pre></div>
+<p>Example:</p>
+<div class="sourceCode"><pre class="sourceCode haskell"><code class="sourceCode haskell">  <span class="fu">&gt;&gt;&gt;</span> runExceptT <span class="fu">$</span> runFreshMT <span class="fu">$</span> runReaderT (checkSynSig example1) emptyEnv
+  <span class="dt">Right</span> ()</code></pre></div>
+</section>
+</section>
+<section id="appendix-lens-utilities" class="level1">
+<h1>Appendix: Lens utilities</h1>
+<p>Some machinery to work with records.</p>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Lens</span> s t a b <span class="fu">=</span> forall f <span class="fu">.</span> <span class="dt">Functor</span> f <span class="ot">=&gt;</span> (a <span class="ot">-&gt;</span> f b) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> f t
+<span class="kw">type</span> <span class="dt">Lens'</span> s a <span class="fu">=</span> <span class="dt">Lens</span> s s a a</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Setting</span> s t a b <span class="fu">=</span> (a <span class="ot">-&gt;</span> <span class="dt">Identity</span> b) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">Identity</span> t
+<span class="kw">type</span> <span class="dt">Setting'</span> s a <span class="fu">=</span> <span class="dt">Setting</span> s s a a</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">over ::</span> <span class="dt">Setting</span> s t a b <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> b) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> t
+over l f <span class="fu">=</span> runIdentity <span class="fu">.</span> l (<span class="dt">Identity</span> <span class="fu">.</span> f)</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">set ::</span> <span class="dt">Setting</span> s t a b <span class="ot">-&gt;</span> b <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> t
+set l <span class="fu">=</span> over l <span class="fu">.</span> const</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="kw">type</span> <span class="dt">Getting</span> r s a <span class="fu">=</span> (a <span class="ot">-&gt;</span> <span class="dt">Const</span> r a) <span class="ot">-&gt;</span> s <span class="ot">-&gt;</span> <span class="dt">Const</span> r s</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode literate haskell"><code class="sourceCode haskell"><span class="ot">views ::</span> <span class="dt">MonadReader</span> s m <span class="ot">=&gt;</span> <span class="dt">Getting</span> a s a <span class="ot">-&gt;</span> (a <span class="ot">-&gt;</span> r) <span class="ot">-&gt;</span> m r
+views l f <span class="fu">=</span> asks (\s <span class="ot">-&gt;</span> f (getConst (l <span class="dt">Const</span> s)))</code></pre></div>
+</section>
+</body>
+</html>
