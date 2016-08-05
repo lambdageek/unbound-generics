@@ -292,10 +292,13 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > intT = BaseT IntT
 > unitT = BaseT UnitT
 
+> boxT_ :: Type -> [Nominal] -> Type
+> boxT_ = BoxT
 
 > (@@) :: Expr -> Expr -> Expr
 > (@@) = App
-> infixr 5 @@
+> infixl 5 @@
+
 
 > chooseNew :: String -> Type -> (Nominal -> Expr) -> Expr
 > chooseNew s t f =
@@ -351,7 +354,7 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 First a little recursive helper function that expands out to the m-fold multiplication code \texttt{X * X * X * ... * 1}
 
 > exp' :: Nominal -> Expr
-> exp' nX = recFun "exp'" "m" intT intT $ \exp' m ->
+> exp' nX = recFun "exp'" "m" intT (boxT_ intT [nX]) $ \exp' m ->
 >   ifLeqZ m (box $ number 1) (letBox "u" (exp' @@ (sub1 m)) $ \u ->
 >                                 box $ mul (name nX) (runCode u))
 >   
