@@ -9,6 +9,8 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 > import Unbound.Generics.LocallyNameless
 > import Control.Monad.Except
 > import Control.Monad.State
+> import Data.List (partition, sort)
+> import Data.Either (partitionEithers)
 
 \section{Syntax}
 
@@ -17,11 +19,16 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 > data BaseType = UnitT | BoolT | IntT
 >   deriving (Typeable, Generic, Show)
 
+> data Support = Support { supportNominals :: ![Nominal],
+>                          supportVars :: ![SupportVar] }
+>   deriving (Typeable, Generic, Show)
+> type SupportVar = Name Support
+
 > data Type =
 >   BaseT BaseType          -- some base types
 >   | ArrT Type Type        -- τ₁→τ₂ functions
->   | BoxT Type [Nominal]   -- □_C τ is the type of code of type τ with names in C
->   | NomArr Type Type      -- τ₁ ↛ τ₂ is the type of νN:τ₁.e brings a
+>   | BoxT Type Support   -- □_C τ is the type of code of type τ with support C
+>   | NomArrT Type Type      -- τ₁ ↛ τ₂ is the type of νN:τ₁.e brings a
 >                           -- new name N associated with type τ₁ into
 >                           -- scope in a body of type τ₂.  The new
 >                           -- name cannot appear in the type τ₂ or in
@@ -30,6 +37,7 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 >                           -- away or only appear in code in e, not
 >                           -- in subexpresisons that may be evaluated
 >                           -- in teh course of evaluating e.
+>   | ForallSupT (Bind SupportVar Type) -- support-polymorphic functions
 >   deriving (Typeable, Generic, Show)
 
 \subsection{Expressions}
@@ -48,6 +56,8 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 >   | LetBox Expr (Bind CodeVar Expr)
 >   | New (Bind (Nominal, Embed Type) Expr)   -- the New operation brings names into scope; it is the job of the type system to ensure that the new name does not appear in the type of the body, nor its support.
 >   | Choose Expr
+>   | PLamSupport (Bind SupportVar Expr)
+>   | PAppSupport Expr Support
 >   deriving (Typeable, Generic, Show)
 >
 > data BaseConst = UnitC | BoolC !Bool | IntC !Int
@@ -68,6 +78,7 @@ Ordinary variables just stand for expressions.
 > isValue (Lambda _) = True
 > isValue (Box _) = True
 > isValue (New _) = True
+> isValue (PLamSupport _) = True
 > isValue _ = False
 
 \subsection{Code}
@@ -110,6 +121,7 @@ renaming of bound occurrances, etc.
 
 > instance Alpha Nom
 > instance Alpha Code
+> instance Alpha Support
 > instance Alpha NominalSubst
 > instance Alpha Type
 > instance Alpha Expr
@@ -152,10 +164,14 @@ short-circuit substitution there and return the type unchanged.
 > instance Subst Expr Code
 > instance Subst Expr NominalSubst
 > instance Subst Expr Nom
+> instance Subst Expr Support where
+>   subst _ _ = id
+>   substs _ = id
 
 \subsubsection{Nominal substitution}
 
 > instance Subst Nom Nom
+> instance Subst Nom Support
 
 To substitute for a nominal N in an expression e, we use need to use
 \texttt{isCoerceVar} to pull out the expression from the Nom being
@@ -201,6 +217,47 @@ us back the same unchanged syntactic object!)
 > instance Subst Code Nom
 
 > instance Subst Code Type where
+>   subst _ _ = id
+>   substs _ = id
+
+> instance Subst Code Support where
+>   subst _ _ = id
+>   substs _ = id
+
+\subsubsection{Support polymorphism substitution}
+
+Support variables stand for support sets.  We have to do a bit of
+juggling to normalize the result of the substitution.
+
+> instance Subst Support Support where
+>   subst v sup sup0@(Support noms vs) =
+>     case Data.List.partition (== v) vs of
+>       ((_:_), vs') -> let
+>         noms' = sort (supportNominals sup ++ noms)
+>         vs'' = sort (supportVars sup ++ vs')
+>         in Support noms' vs''
+>       _ -> sup0
+>   substs ss (Support noms vs) =
+>     let f v = case lookup v ss of
+>           Just sup -> Left sup
+>           Nothing -> Right v
+>         (sups, vs') = partitionEithers (map f vs)
+>         noms' = sort (concatMap supportNominals sups ++ noms)
+>         vs'' = sort (concatMap supportVars sups ++ vs')
+>         in Support noms' vs''
+
+> instance Subst Support Type
+
+> instance Subst Support Expr
+> instance Subst Support Nom
+> instance Subst Support NominalSubst
+
+As with Nominals, since SupportVars stand for the support of an
+expression, and boxed code is meant to have empty support until it is
+unboxed and evaluated, the support variable substitution on code is
+the identity.
+
+> instance Subst Support Code where
 >   subst _ _ = id
 >   substs _ = id
 
@@ -259,6 +316,11 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 >     modify (\ctx -> SnocNC $ rebind ctx nt)
 >     return ebody
 >   Choose e -> Choose <$> step e
+>   PLamSupport _ -> evalError ("already a value: " ++ show e0)
+>   PAppSupport (PLamSupport bnd) sup -> do
+>     (sv, ebody) <- unbind bnd
+>     return $ subst sv sup ebody
+>   PAppSupport e1 sup -> PAppSupport <$> step e1 <*> pure sup
 
 > evalError :: MonadError String m => String -> m a
 > evalError = throwError
@@ -288,17 +350,25 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 >       x = s2n sx
 >   in RecFun $ bind (fn, x, embed t1, embed t2) (f (V fn) (V x))
 
+> plam :: String -> (SupportVar -> Expr) -> Expr
+> plam s f =
+>   let sv = s2n s
+>   in PLamSupport (bind sv (f sv))
+
 > intT, unitT :: Type
 > intT = BaseT IntT
 > unitT = BaseT UnitT
-
+> boxT :: Type -> [Nominal] -> [SupportVar] -> Type
+> boxT t noms svs = BoxT t (Support noms svs)
 > boxT_ :: Type -> [Nominal] -> Type
-> boxT_ = BoxT
+> boxT_ t noms = boxT t noms []
 
 > (@@) :: Expr -> Expr -> Expr
 > (@@) = App
 > infixl 5 @@
 
+> papp :: Expr -> [Nominal] -> [SupportVar] -> Expr
+> papp e noms svs = PAppSupport e (Support noms svs)
 
 > chooseNew :: String -> Type -> (Nominal -> Expr) -> Expr
 > chooseNew s t f =
@@ -387,3 +457,38 @@ Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [V 0@0,P Mu
 λ> run (eval (letBox "exp3" (expon @@ number 3) $ \exp3 -> (runCode exp3) @@ number 2))
 Right (C (IntC 8),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 \end{verbatim}
+
+\subsubsection{Staged support-polymorphic exponential kernel}
+
+> pexpKernel :: Expr
+> pexpKernel = plam "p" $ \sp ->
+>   lam "e" (boxT intT [] [sp]) $ \e ->
+>  recFun "go" "m" intT (boxT intT [] [sp]) $ \go m ->
+>   ifLeqZ m (box $ number 1) (letBox "u" (go @@ (sub1 m)) $ \u ->
+>                                 letBox "w" e $ \w ->
+>                                 box $ mul (runCode u) (runCode w))
+
+\begin{verbatim}
+λ> run $ eval (papp pexpKernel [] [] @@ box (number 42) @@ number 3)
+Right (Box (Code {codeExpr = P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),C (IntC 42)],C (IntC 42)],C (IntC 42)]}),NilNC)
+\end{verbatim}
+
+> pexp :: Expr
+> pexp = lam "n" intT $ \n ->
+>   chooseNew "X" intT $ \nX ->
+>   letBox "w" (papp pexpKernel [nX] [] @@ box (name nX) @@ n) $ \w ->
+>   box (lam "x" intT $ \x -> code [nX ~~ x] w)
+
+\begin{verbatim}
+λ> run $ eval (pexp @@ number 5)
+Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),V 0@0],V 0@0],V 0@0],V 0@0],V 0@0])}),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
+\end{verbatim}
+
+\begin{verbatim}
+λ> run $ eval (letBox "c" (pexp @@ number 5) $ \c -> runCode c @@ number 2)
+Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
+\end{verbatim}
+
+
+
+> _ = ()
