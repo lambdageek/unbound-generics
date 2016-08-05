@@ -161,7 +161,6 @@ short-circuit substitution there and return the type unchanged.
 > instance Subst Expr Expr where
 >   isvar (V v) = Just (SubstName v)
 >   isvar _ = Nothing
-> instance Subst Expr Code
 > instance Subst Expr NominalSubst
 > instance Subst Expr Nom
 > instance Subst Expr Support where
@@ -182,10 +181,16 @@ substituted.
 >   isCoerceVar _ = Nothing
 
 An important property (justified by the type system) of this language
-is that when substituting for a name N in an expression Box (Code e)
-we can just return Box (Code e) unchanged.
+is that when substituting for a name N or ordinary variable v in an
+expression Box (Code e) we can just return Box (Code e) unchanged
+since the type system prevents Code from depending on the ordinary
+variable context or by using names that do not contribute to the
+support of a term.
 
 > instance Subst Nom Code where
+>   subst _ _ = id
+>   substs _ = id
+> instance Subst Expr Code where
 >   subst _ _ = id
 >   substs _ = id
 
