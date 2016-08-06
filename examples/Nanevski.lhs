@@ -1,15 +1,23 @@
 This example is based on ``Staged Computation with Names and Necessity'' by Nanevski and Pfenning.
 
 > {-# language DeriveDataTypeable, DeriveGeneric, MultiParamTypeClasses,
->     FlexibleContexts, FlexibleInstances #-}
+>     FlexibleContexts, FlexibleInstances, DefaultSignatures, ViewPatterns, RankNTypes,
+>     GeneralizedNewtypeDeriving #-}
 > module Nanevski where
 >
 > import GHC.Generics (Generic)
 > import Data.Typeable (Typeable)
 > import Unbound.Generics.LocallyNameless
+> import Unbound.Generics.LocallyNameless.Internal.Fold (Fold, foldMapOf)
+> import qualified Unbound.Generics.PermM as PermM
+>
+> import Control.Monad (zipWithM_)
 > import Control.Monad.Except
 > import Control.Monad.State
-> import Data.List (partition, sort)
+> import Control.Monad.Writer
+> import Control.Monad.Reader
+> import Data.List (partition, nub, sort, (\\), isSubsequenceOf)
+> import Data.Monoid (Any (..))
 > import Data.Either (partitionEithers)
 
 \section{Syntax}
@@ -278,6 +286,7 @@ of Nominals together with their associated types and an expression
 with empty support to another such configuration.
 
 > data NomCtx = NilNC | SnocNC (Rebind NomCtx (Nominal, Embed Type))
+>             | SnocSupNC (NomCtx, SupportVar)
 >   deriving (Typeable, Generic, Show)
 > instance Alpha NomCtx
 
@@ -501,6 +510,300 @@ Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [P MulPrim 
 Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 \end{verbatim}
 
+\section{Type checking and support inference}
 
+> class Fresh m => TC m where
+>  lookupSupportVar :: SupportVar -> m () -- just check it exists
+>  lookupVar :: Var -> m Type
+>  lookupCodeVar :: CodeVar -> m (Type, Support)
+>  lookupNom :: Nominal -> m Type
+>  extendVar :: Var -> Type -> m a -> m a
+>  extendCodeVar :: CodeVar -> Type -> Support -> m a -> m a
+>  extendNom :: Nominal -> Type -> m a -> m a
+>  extendSupportVar :: SupportVar -> m a -> m a
+>
+>  tcError :: String -> m a
+>  default tcError :: (MonadError String m) => String -> m a
+>  tcError = throwError
+>
+>  inSupport :: Nominal -> m ()
+>  inSupport n = includeSupport (Support [n] [])
+>  includeSupport :: Support -> m ()
+>  default includeSupport :: (MonadWriter Support m) => Support -> m ()
+>  includeSupport = tell
+>
+>  -- run the subcomputation, grab its support and then completely censor it
+>  withEmptySupport :: m a -> m (a, Support)
+>  default withEmptySupport :: (MonadWriter Support m) => m a -> m (a, Support)
+>  withEmptySupport comp =
+>    let censorEverything = const mempty
+>    in pass ((\asup -> (asup, censorEverything)) <$> listen comp)
+>    
+
+> wellFormed :: TC m => Type -> m ()
+> wellFormed t0 =
+>   case t0 of
+>     BaseT {} -> return ()
+>     (ArrT t1 t2) -> wellFormed t1 >> wellFormed t2
+>     (NomArrT t1 t2) -> wellFormed t1 >> wellFormed t2
+>     (BoxT t sup) -> wellFormed t >> wellFormedSupport sup
+>     (ForallSupT bnd) -> do
+>       (sv, t) <- unbind bnd
+>       extendSupportVar sv $ wellFormed t
+>     _ -> tcError ("Unimplemented! " ++ show t0)
+
+> wellFormedSupport :: TC m => Support -> m ()
+> wellFormedSupport (Support _noms svs) = mapM_ lookupSupportVar svs
+
+> newtype Expected a = Expecting { unExpecting :: a }
+
+> inferExpr :: TC m => Expr -> m Type
+> inferExpr e = inferExpr_ e (Expecting Nothing)
+
+> expecting :: TC m => Expected (Maybe Type) -> Type -> m Type
+> expecting (Expecting Nothing) t = return t
+> expecting (Expecting (Just texp)) t = do
+>   unless (t `aeq` texp) $ tcError $ "expected type " ++ show texp ++ " but got " ++ show t
+>   return texp
+
+> expectingSup :: TC m => Expected (Maybe Support) -> Support -> m Support
+> expectingSup (Expecting Nothing) sup = return sup
+> expectingSup (Expecting (Just supexp)) sup = do
+>   unless (sup `subsup` supexp) $ tcError $ "expected support " ++ show supexp ++ " but got " ++ show sup
+>   return supexp
+
+> subsup :: Support -> Support -> Bool
+> subsup (Support noms svs) (Support noms' svs') =
+>   let nomsLeq = noms `isSubsequenceOf` noms'
+>       svsLeq = svs `isSubsequenceOf` svs'
+>   in nomsLeq && svsLeq
+
+> checkExpr :: TC m => Expr -> Type -> m ()
+> checkExpr e t = inferExpr_ e (Expecting (Just t)) >> return ()
+> 
+
+> inferExpr_ :: (TC m) => Expr -> Expected (Maybe Type) -> m Type
+> inferExpr_ e0 xpt =
+>   case e0 of
+>     V x -> lookupVar x >>= expecting xpt
+>     U noms u -> do
+>       (t, supIn) <- lookupCodeVar u
+>       checkSubst noms supIn
+>       expecting xpt t
+>     N nX -> do
+>       t <- lookupNom nX
+>       inSupport nX
+>       expecting xpt t
+>     C bc -> expecting xpt $ BaseT $ inferConst bc
+>     P primOp vs es -> do
+>       checkPrimitive primOp (vs ++ es) >>= expecting xpt
+>     Lambda bnd -> do
+>       ((x, unembed -> tDom), e) <- unbind bnd
+>       wellFormed tDom
+>       xptCod <- unExpectArrType xpt tDom
+>       tCod <- extendVar x tDom $ inferExpr_ e xptCod
+>       return (tDom `ArrT` tCod)
+>     App e1 e2 -> do
+>       tf <- inferExpr e1
+>       (tDom, tCod) <- matchArrType tf
+>       checkExpr e2 tDom
+>       expecting xpt tCod
+>     RecFun bnd -> do
+>       ((f, x, unembed -> tDom, unembed -> tCod), e) <- unbind bnd
+>       let funT = tDom `ArrT` tCod
+>       extendVar f funT $ extendVar x tDom $ checkExpr e tCod
+>       expecting xpt funT
+>     Let e1 bnd -> do
+>       t <- inferExpr e1
+>       (x, e2) <- unbind bnd
+>       extendVar x t $ inferExpr_ e2 xpt
+>     Box c -> do
+>       (xpt, xpsup) <- unExpectBoxType xpt
+>       inferCode c xpt xpsup
+>     LetBox e1 bnd -> do
+>       tbox <- inferExpr e1
+>       (t, sup) <- matchBoxType tbox
+>       (u, e2) <- unbind bnd
+>       extendCodeVar u t sup $ inferExpr_ e2 xpt
+>     New bnd -> do
+>       ((nX, unembed -> tDom), e) <- unbind bnd
+>       wellFormed tDom
+>       xptCod <- unExpectNomArrType xpt tDom
+>       (tCod, supOut) <- withEmptySupport $ extendNom nX tDom $ inferExpr_ e xptCod
+>       let inType = anyOf fv (== nX) tCod
+>           inSup = anyOf fv (== nX) (supportNominals supOut)
+>       when inType $ tcError ("Name " ++ show nX ++ " appears in the result type of a ν-expression " ++ show tCod)
+>       when inSup $ tcError ("Name " ++ show nX ++ " appears in the support of ν-expression " ++ show supOut)
+>       includeSupport supOut
+>       return (tDom `NomArrT` tCod)
+>     Choose e -> do
+>       tarr <- inferExpr e
+>       (_, tCod) <- matchNomArrType tarr
+>       expecting xpt tCod
+>     PLamSupport bnd -> do
+>       (sv, e) <- unbind bnd
+>       xptout <- unExpectForallSupType xpt sv 
+>       (t, supOut) <- withEmptySupport $ extendSupportVar sv $ inferExpr_ e xptout
+>       let inSup = anyOf fv (== sv) (supportVars supOut)
+>       when inSup $ tcError ("support variable " ++ show sv ++ " appears in the support of the body of the support-polymorphic function")
+>       includeSupport supOut
+>       expecting xpt $ ForallSupT (bind sv t)
+>     PAppSupport e sup -> do
+>       tall <- inferExpr e
+>       wellFormedSupport sup
+>       (sv, t) <- matchForallSup tall
+>       expecting xpt $ subst sv sup t
+
+> inferCode :: TC m => Code -> Expected (Maybe Type) -> Expected (Maybe Support) -> m Type
+> inferCode (Code e) xpt xpsup = do
+>   (t, supOut) <- withEmptySupport (inferExpr_ e xpt)
+>   BoxT t <$> expectingSup xpsup supOut
+
+> matchArrType :: TC m => Type -> m (Type, Type)
+> matchArrType (ArrT tdom tcod) = return (tdom, tcod)
+> matchArrType t0 = tcError ("Expected an expression of function type, got " ++ show t0)
+
+> matchNomArrType :: TC m => Type -> m (Type, Type)
+> matchNomArrType (NomArrT tdom tcod) = return (tdom, tcod)
+> matchNomArrType t0 = tcError ("Expected an expression of nominal-function type, got " ++ show t0)
+
+> matchForallSup :: TC m => Type -> m (SupportVar, Type)
+> matchForallSup (ForallSupT bnd) = unbind bnd
+> matchForallSup t0 = tcError ("Expected a support-polymorphic type, got " ++ show t0)
+
+> matchBoxType :: TC m => Type -> m (Type, Support)
+> matchBoxType (BoxT t sup) = return (t, sup)
+> matchBoxType t0 = tcError ("Expected an expression of code type, got " ++ show t0)
+
+> unExpectArrType :: TC m => Expected (Maybe Type) -> Type -> m (Expected (Maybe Type))
+> unExpectArrType (Expecting Nothing) _ = return (Expecting Nothing)
+> unExpectArrType (Expecting (Just texp)) t' = do
+>   (tdom, tcod) <- matchArrType texp
+>   expecting (Expecting (Just tdom)) t'
+>   return (Expecting (Just tcod))
+
+> unExpectNomArrType :: TC m => Expected (Maybe Type) -> Type -> m (Expected (Maybe Type))
+> unExpectNomArrType (Expecting Nothing) _ = return (Expecting Nothing)
+> unExpectNomArrType (Expecting (Just texp)) t' = do
+>   (tdom, tcod) <- matchNomArrType texp
+>   expecting (Expecting (Just tdom)) t'
+>   return (Expecting (Just tcod))
+
+> unExpectForallSupType :: TC m => Expected (Maybe Type) -> SupportVar -> m (Expected (Maybe Type))
+> unExpectForallSupType (Expecting Nothing) _ = return (Expecting Nothing)
+> unExpectForallSupType (Expecting (Just texp)) sv = do
+>   (sv', t) <- matchForallSup texp
+>   return (Expecting (Just (swaps (PermM.single (AnyName sv) (AnyName sv')) t)))
+
+> unExpectBoxType :: TC m => Expected (Maybe Type) -> m (Expected (Maybe Type), Expected (Maybe Support))
+> unExpectBoxType (Expecting Nothing) = return (Expecting Nothing, Expecting Nothing)
+> unExpectBoxType (Expecting (Just t)) = do
+>   (t', sup) <- matchBoxType t
+>   return (Expecting (Just t'), Expecting (Just sup))
+
+> inferConst :: BaseConst -> BaseType
+> inferConst UnitC = UnitT
+> inferConst (BoolC _) = BoolT
+> inferConst (IntC _) = IntT
+
+> checkPrimitive :: TC m => PrimOp -> [Expr] -> m Type
+> checkPrimitive (IfPrim t) [e, thunk1, thunk2] = do
+>   wellFormed t
+>   let thunkT = unitT `ArrT` t
+>   checkExpr e boolT
+>   checkExpr thunk1 thunkT
+>   checkExpr thunk2 thunkT
+>   return thunkT
+> checkPrimitive (IfPrim _) es = tcError $ "if expression expected 2 branches, got " ++ show (length es)
+> checkPrimitive AddPrim [e1,e2] = checkExpr e1 intT >> checkExpr e2 intT >> return intT
+> checkPrimitive AddPrim es = binOpPrimitiveError AddPrim es
+> checkPrimitive MulPrim [e1,e2] = checkExpr e1 intT >> checkExpr e2 intT >> return intT
+> checkPrimitive MulPrim es = binOpPrimitiveError MulPrim es
+> checkPrimitive LeqPrim [e1,e2] = checkExpr e1 intT >> checkExpr e2 intT >> return boolT
+> checkPrimitive LeqPrim es = binOpPrimitiveError LeqPrim es
+>
+> binOpPrimitiveError :: TC m => PrimOp -> [Expr] -> m a
+> binOpPrimitiveError p es = tcError $ "expected 2 arguments to " ++ show p ++ ", got " ++ show (length es)
+
+
+> checkSubst :: (TC m) => NominalSubst -> Support -> m ()
+> checkSubst = go . nominalSubst
+>   where
+>     go :: (TC m) => [(Nominal, Nom)] -> Support -> m ()
+>     go [] = includeSupport
+>     go ((nX, ne):noms) = \supIn -> do
+>       t <- lookupNom nX
+>       checkExpr (nomExpr ne) t
+>       go noms (supIn `excludingNominal` nX)
+
+> excludingNominal :: Support -> Nominal -> Support
+> excludingNominal (Support noms svs) nX = Support (noms \\ [nX]) svs
+
+> instance Monoid Support where
+>   mempty = Support [] []
+>   (Support noms svs) `mappend` (Support noms' svs') = Support noms'' svs''
+>     where
+>       noms'' = nub $ sort (noms ++ noms')
+>       svs'' = nub $ sort (svs ++ svs')
+
+> anyOf :: Fold s a -> (a -> Bool) -> s -> Bool
+> anyOf l f =  getAny . foldMapOf l (Any . f)
+
+> data Env = Env { envSigma :: NomCtx, envDelta :: [(CodeVar, Embed (Type, Support))], envGamma :: [(Var, Embed Type)] }
+
+> newtype TypeCheck a = TypeCheck { unTypeCheck :: ReaderT Env (WriterT Support (ExceptT String FreshM)) a }
+>                     deriving (Functor, Applicative, Monad, Fresh)
+
+> hasSupportNomCtx :: SupportVar -> NomCtx -> Bool
+> hasSupportNomCtx  _ NilNC = False
+> hasSupportNomCtx sv (SnocNC (unrebind -> (ctx, _))) = hasSupportNomCtx sv ctx
+> hasSupportNomCtx sv (SnocSupNC (ctx, sv')) | sv == sv' = True
+>                                            | otherwise = hasSupportNomCtx sv ctx
+>   
+
+> lookupNominalNomCtx :: Nominal -> NomCtx -> Maybe (Embed Type)
+> lookupNominalNomCtx _ NilNC = Nothing
+> lookupNominalNomCtx nX (SnocNC (unrebind -> (ctx, (nY, t)))) | nX == nY = Just t
+>                                                              | otherwise = lookupNominalNomCtx nX ctx
+> lookupNominalNomCtx nX (SnocSupNC (ctx, _)) = lookupNominalNomCtx nX ctx
+
+> instance TC TypeCheck where
+>   lookupSupportVar sv = do
+>     b <- TypeCheck $ asks (hasSupportNomCtx sv . envSigma)
+>     unless b $ tcError ("Support variable " ++ show sv ++ " not in scope")
+>   lookupVar x = do
+>     m <- TypeCheck $ asks (lookup x . envGamma)
+>     case m of
+>       Just t -> return (unembed t)
+>       Nothing -> tcError ("Variable " ++ show x ++ " not in scope")
+>   lookupCodeVar u = do
+>     m <- TypeCheck $ asks (lookup u . envDelta)
+>     case m of
+>       Just ts -> return (unembed ts)
+>       Nothing -> tcError ("Code variable " ++ show u ++ " not in scope")
+>   lookupNom nX = do
+>     m <- TypeCheck $ asks (lookupNominalNomCtx nX . envSigma)
+>     case m of
+>       Just t -> return (unembed t)
+>       Nothing -> tcError ("Nominal " ++ show nX ++ " not in scope")
+>   extendVar x t = TypeCheck . local (\env -> env { envGamma = (x, embed t) : envGamma env  }) . unTypeCheck
+>   extendCodeVar u t sup = TypeCheck . local (\env -> env { envDelta = (u, embed (t, sup)) : envDelta env } ) . unTypeCheck
+>   extendNom nX t = TypeCheck . local (\env -> env { envSigma = SnocNC (rebind (envSigma env) (nX, embed t)) } ) . unTypeCheck
+>   extendSupportVar sv = TypeCheck . local (\env -> env { envSigma = SnocSupNC (envSigma env, sv) } ) . unTypeCheck
+> 
+>   tcError = TypeCheck . throwError
+>
+>   includeSupport = TypeCheck . tell
+>
+>   withEmptySupport comp =
+>     let censorEverything = const mempty
+>     in TypeCheck (pass ((\asup -> (asup, censorEverything)) <$> listen (unTypeCheck comp)))
+
+> runTypeCheck :: TypeCheck a -> Either String (a, Support)
+> runTypeCheck comp = runFreshM (runExceptT (runWriterT (runReaderT (unTypeCheck comp) emptyEnv)))
+>   where emptyEnv = Env emptySigma emptyDelta emptyGamma
+>         emptySigma = NilNC
+>         emptyDelta = []
+>         emptyGamma = []
 
 > _ = ()
