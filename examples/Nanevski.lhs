@@ -62,7 +62,7 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 >
 > data BaseConst = UnitC | BoolC !Bool | IntC !Int
 >   deriving (Typeable, Generic, Show)
-> data PrimOp = IfPrim | AddPrim | MulPrim | LeqPrim
+> data PrimOp = IfPrim Type | AddPrim | MulPrim | LeqPrim
 >   deriving (Typeable, Generic, Show)
 
 >
@@ -145,9 +145,14 @@ of name.
 >   subst _ _ = id
 >   substs _ = id
 >
-> instance Subst a PrimOp where
+> instance Subst Expr PrimOp where
 >   subst _ _ = id
 >   substs _ = id
+> instance Subst Code PrimOp where
+>   subst _ _ = id
+>   substs _ = id
+> instance Subst Nom PrimOp
+> instance Subst Support PrimOp
 
 \subsubsection{Expression substitution}
 
@@ -331,7 +336,7 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > evalError = throwError
 
 > applyPrim :: MonadError String m => PrimOp -> [Value] -> m Value
-> applyPrim IfPrim [C (BoolC b), v1, v2] = return $ if b then v1 else v2
+> applyPrim (IfPrim _t) [C (BoolC b), v1, v2] = return $ if b then v1 else v2
 > applyPrim AddPrim [C (IntC x), C (IntC y)] = return $ C $ IntC $ x + y
 > applyPrim MulPrim [C (IntC x), C (IntC y)] = return $ C $ IntC $ x * y
 > applyPrim LeqPrim [C (IntC x), C (IntC y)] = return $ C $ BoolC $ x <= y
@@ -360,9 +365,10 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 >   let sv = s2n s
 >   in PLamSupport (bind sv (f sv))
 
-> intT, unitT :: Type
+> intT, unitT, boolT :: Type
 > intT = BaseT IntT
 > unitT = BaseT UnitT
+> boolT = BaseT BoolT
 > boxT :: Type -> [Nominal] -> [SupportVar] -> Type
 > boxT t noms svs = BoxT t (Support noms svs)
 > boxT_ :: Type -> [Nominal] -> Type
@@ -405,9 +411,9 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > number :: Int -> Expr
 > number = C . IntC 
 
-> ifLeqZ :: Expr -> Expr -> Expr -> Expr
-> ifLeqZ ex etrue efalse =
->   App (P IfPrim [] [etest, thunk etrue, thunk efalse]) (C UnitC)
+> ifLeqZ :: Type -> Expr -> Expr -> Expr -> Expr
+> ifLeqZ tres ex etrue efalse =
+>   App (P (IfPrim tres) [] [etest, thunk etrue, thunk efalse]) (C UnitC)
 >   where
 >     etest = P LeqPrim [] [ex, number 0]
 >     thunk e = lam "_" unitT (\_ -> e)
@@ -430,8 +436,8 @@ First a little recursive helper function that expands out to the m-fold multipli
 
 > exp' :: Nominal -> Expr
 > exp' nX = recFun "exp'" "m" intT (boxT_ intT [nX]) $ \exp' m ->
->   ifLeqZ m (box $ number 1) (letBox "u" (exp' @@ (sub1 m)) $ \u ->
->                                 box $ mul (name nX) (runCode u))
+>   ifLeqZ intT m (box $ number 1) (letBox "u" (exp' @@ (sub1 m)) $ \u ->
+>                                      box $ mul (name nX) (runCode u))
 >   
 
 And the example exponential function takes an integer n and then constructs a piece of code consiting of a lambda abstraction whose argument x is multiplied with itself n times.
@@ -467,11 +473,12 @@ Right (C (IntC 8),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 
 > pexpKernel :: Expr
 > pexpKernel = plam "p" $ \sp ->
->   lam "e" (boxT intT [] [sp]) $ \e ->
->  recFun "go" "m" intT (boxT intT [] [sp]) $ \go m ->
->   ifLeqZ m (box $ number 1) (letBox "u" (go @@ (sub1 m)) $ \u ->
->                                 letBox "w" e $ \w ->
->                                 box $ mul (runCode u) (runCode w))
+>   let tResult = boxT intT [] [sp]
+>   in lam "e" tResult $ \e ->
+>     recFun "go" "m" intT tResult $ \go m ->
+>     ifLeqZ tResult m (box $ number 1) (letBox "u" (go @@ (sub1 m)) $ \u ->
+>                                           letBox "w" e $ \w ->
+>                                           box $ mul (runCode u) (runCode w))
 
 \begin{verbatim}
 λ> run $ eval (papp pexpKernel [] [] @@ box (number 42) @@ number 3)
