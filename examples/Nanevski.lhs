@@ -11,7 +11,6 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 > import Unbound.Generics.LocallyNameless.Internal.Fold (Fold, foldMapOf)
 > import qualified Unbound.Generics.PermM as PermM
 >
-> import Control.Monad (zipWithM_)
 > import Control.Monad.Except
 > import Control.Monad.State
 > import Control.Monad.Writer
@@ -19,6 +18,9 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 > import Data.List (partition, nub, sort, (\\), isSubsequenceOf)
 > import Data.Monoid (Any (..))
 > import Data.Either (partitionEithers)
+> import qualified System.IO as IO
+> import qualified Text.PrettyPrint.ANSI.Leijen as PP
+> import Text.PrettyPrint.ANSI.Leijen ()
 
 \section{Syntax}
 
@@ -382,6 +384,13 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > boxT t noms svs = BoxT t (Support noms svs)
 > boxT_ :: Type -> [Nominal] -> Type
 > boxT_ t noms = boxT t noms []
+> arrT :: Type -> Type -> Type
+> arrT = ArrT
+> infixr 5 `arrT`
+> forallSupT :: String -> (SupportVar -> Type) -> Type
+> forallSupT s f =
+>   let sv = s2n s
+>   in ForallSupT (bind sv (f sv))
 
 > (@@) :: Expr -> Expr -> Expr
 > (@@) = App
@@ -430,8 +439,12 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > sub1 :: Expr -> Expr
 > sub1 e = P AddPrim [] [e, number (-1)]
 
-> mul :: Expr -> Expr -> Expr
+> add, mul :: Expr -> Expr -> Expr
+> add e1 e2 = P AddPrim [] [e1, e2]
 > mul e1 e2 = P MulPrim [] [e1, e2]
+
+> infixl 6 `add`
+> infixl 7 `mul`
 
 > (~~) :: a -> b -> (a, b)
 > (~~) = (,)
@@ -799,6 +812,22 @@ Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 >     let censorEverything = const mempty
 >     in TypeCheck (pass ((\asup -> (asup, censorEverything)) <$> listen (unTypeCheck comp)))
 
+> inferClosedConfig :: TC m => ClosedConfig -> m Type
+> inferClosedConfig bnd = do
+>   (ctx, expr) <- unbind bnd
+>   inferConfiguration ctx expr
+
+> inferConfiguration :: TC m => NomCtx -> Expr -> m Type
+> inferConfiguration ctx = inWellFormedNomCtx ctx . inferExpr
+
+> inWellFormedNomCtx :: TC m => NomCtx -> m a -> m a
+> inWellFormedNomCtx NilNC = id
+> inWellFormedNomCtx (SnocNC (unrebind -> (ctx, (nX, unembed -> t)))) = \k ->
+>   inWellFormedNomCtx ctx $ do
+>   wellFormed t
+>   extendNom nX t k
+> inWellFormedNomCtx (SnocSupNC (ctx,sv)) = inWellFormedNomCtx ctx . extendSupportVar sv 
+
 > runTypeCheck :: TypeCheck a -> Either String (a, Support)
 > runTypeCheck comp = runFreshM (runExceptT (runWriterT (runReaderT (unTypeCheck comp) emptyEnv)))
 >   where emptyEnv = Env emptySigma emptyDelta emptyGamma
@@ -806,4 +835,234 @@ Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 >         emptyDelta = []
 >         emptyGamma = []
 
+\appendix
+
+\section{Pretty Printing}
+
+We need our own pretty printer class because we want locally fresh
+names when we descened under binders.
+
+> type Precedence = Int
+
+> class Pretty a where
+>   pp :: LFresh m => a -> Precedence -> m PP.Doc
+
+> paren :: Functor m => Bool -> m PP.Doc -> m PP.Doc
+> paren b = if b then fmap PP.parens else id
+
+> lowest, quantBodyPrec, arrPrec, arrPrecLeft, boxPrec, quantPrec :: Precedence
+> lowest = -1
+> quantBodyPrec = 2
+> arrPrec = 5
+> arrPrecLeft = 6
+> boxPrec = 9
+> quantPrec = 2
+
+> lamBodyPrec, appPrec :: Precedence
+> semiPrec = 1
+> letBodyPrec = 1
+> lamBodyPrec = 2
+> leqPrec = 3
+> addPrec = 4
+> addPrecRight = 5
+> mulPrec = 5
+> mulPrecRight = 6
+> lambdaPrec = 7
+> letPrec = 7
+> bindingPrec = 8
+> appPrec = 10
+
+> instance Pretty BaseType where
+>   pp b _p = pure $ PP.text $ case b of
+>     UnitT -> "()"
+>     BoolT -> "bool"
+>     IntT  -> "int"
+
+> instance Pretty Type where
+>   pp t0 p = case t0 of
+>     BaseT b -> pp b lowest
+>     ArrT t1 t2 -> paren (p > arrPrec) (infixBinary <$> pp t1 arrPrecLeft <*> pure (PP.text "→") <*> pp t2 arrPrec)
+>     NomArrT t1 t2 -> paren (p > arrPrec) (infixBinary <$> pp t1 arrPrecLeft <*> pure (PP.text "↛") <*> pp t2 arrPrec)
+>     BoxT t sup -> paren (p > boxPrec) (ppboxType <$> pp t boxPrec <*> pp sup lowest)
+>     ForallSupT bnd -> paren (p > quantPrec) (quantifier "∀" <$> lunbind bnd (\(sv, t) -> (,) <$> pp sv lowest <*> pp t quantBodyPrec))
+
+> instance Pretty Support where
+>   pp (Support noms svs) _dk = ppsupport <$> traverse (fmap decorNominal . flip pp lowest) noms <*> traverse (fmap decorSupportVar . flip pp lowest) svs
+
+> decorSupportVar :: PP.Doc -> PP.Doc
+> decorSupportVar = PP.dullblue
+
+> decorCodeVar :: PP.Doc -> PP.Doc
+> decorCodeVar = PP.dullmagenta
+
+> decorNominal :: PP.Doc -> PP.Doc
+> decorNominal = PP.bold
+
+> instance Pretty (Name a) where
+>   pp a _dk = pure $ PP.text $ show a
+
+> ppboxType :: PP.Doc -> PP.Doc -> PP.Doc
+> ppboxType t sup = PP.hang 2 (PP.text "□_" PP.<> sup PP.</> PP.group t)
+
+> ppsupport :: [PP.Doc] -> [PP.Doc] -> PP.Doc
+> ppsupport noms svs = PP.group $ PP.hang 2 $ PP.braces $ PP.fillSep $ PP.punctuate PP.comma (noms ++ svs)
+
+
+> infixBinary :: PP.Doc -> PP.Doc -> PP.Doc -> PP.Doc
+> infixBinary p1 s p2 = PP.group $ PP.fillSep [p1, s, p2]
+
+> quantifier :: String -> (PP.Doc, PP.Doc) -> PP.Doc
+> quantifier q (obj, body) = PP.text q PP.<//> obj PP.<//> PP.dot PP.<//> body
+
+> instance Pretty Expr where
+>   pp e0 p = case e0 of
+>     V x -> pp x lowest
+>     U subs u -> (PP.<>) <$> pp subs lowest <*> (fmap decorCodeVar . flip pp lowest) u
+>     N nom -> decorNominal <$> pp nom lowest
+>     C c -> pp c lowest
+>     P prim vs es -> paren (p > primPrecedence prim) (ppPrimitive prim (vs ++ es))
+>     Lambda bnd -> paren (p > lambdaPrec) (pplambda "λ" <$> lunbind bnd (\((x, unembed -> t), e) -> (,) <$> (colonclass <$> pp x lowest <*> pp t lowest) <*> pp e lamBodyPrec))
+>     RecFun bnd -> paren (p > lambdaPrec) (pprecfun <$> lunbind bnd (\((f, x, unembed -> targ, unembed -> tres), e) -> (,,,,) <$> pp f lowest <*> pp x lowest <*> pp targ lowest <*> pp tres lowest <*> pp e lamBodyPrec ))
+>     App e1 e2 -> paren (p > appPrec) (ppapp <$> pp e1 appPrec <*> pp e2 (appPrec + 1))
+>     Let e1 bnd -> paren (p > letPrec) (pplet PP.empty <$> pp e1 bindingPrec <*> lunbind bnd (\(x, e2) -> (,) <$> pp x lowest <*> pp e2 letBodyPrec))
+>     LetBox e1 bnd -> paren (p > letPrec) (pplet (PP.text "□") <$> pp e1 bindingPrec <*> lunbind bnd (\(u, e2) -> (,) <$> (fmap decorCodeVar . flip pp lowest) u <*> pp e2 letBodyPrec))
+>     Box code -> pp code lowest
+>     New bnd -> paren (p > lambdaPrec) (pplambda "ν" <$> lunbind bnd (\((nX, unembed -> t), e) -> (,) <$> ppnombind nX t <*> pp e lamBodyPrec))
+>     Choose e -> paren (p > appPrec) (ppapp (PP.text "choose") <$> pp e appPrec)
+>     PLamSupport bnd -> paren (p > lambdaPrec) (pplambda "Λ" <$> lunbind bnd (\(sv, e) -> (,) <$> (fmap decorSupportVar . flip pp lowest) sv <*> pp e lamBodyPrec))
+>     PAppSupport e sup -> paren (p > appPrec) (PP.nest 2 <$> ((PP.</>) <$> (fmap PP.group . flip pp appPrec) e <*> pp sup lowest))
+
+> ppnombind nX t = assocclass <$> fmap decorNominal (pp nX lowest) <*> pp t lowest
+
+> instance Pretty Code where
+>   pp (Code e) _dk = ppcode <$> pp e lowest
+>     where
+>       ppcode c = PP.enclose (PP.text "“") (PP.text "”") (PP.underline c)
+
+> instance Pretty BaseConst where
+>   pp bc _dk = pure $ case bc of
+>     UnitC -> PP.text "()"
+>     BoolC b -> PP.text $ show b
+>     IntC i -> PP.int i
+
+> primPrecedence :: PrimOp -> Precedence
+> primPrecedence (IfPrim _) = appPrec
+> primPrecedence AddPrim = addPrec
+> primPrecedence MulPrim = mulPrec
+> primPrecedence LeqPrim = leqPrec
+>
+> ppPrimitive :: LFresh m => Pretty a => PrimOp -> [a] -> m PP.Doc
+> ppPrimitive (IfPrim t) es = do
+>   let prettyExpr = fmap PP.group . flip pp semiPrec
+>   pes <- traverse prettyExpr es
+>   pt <- pp t lowest
+>   return $ PP.group (PP.text "if" PP.</> (PP.parens $ PP.group $ PP.align $ PP.vsep $ PP.punctuate PP.semi (pt:pes)))
+> ppPrimitive AddPrim [e1,e2] = infixBinary <$> pp e1 addPrec <*> pure (PP.text "+") <*> pp e2 addPrecRight
+> ppPrimitive MulPrim [e1,e2] = infixBinary <$> pp e1 mulPrec <*> pure (PP.text "*") <*> pp e2 mulPrecRight
+> ppPrimitive LeqPrim [e1,e2] = infixBinary <$> pp e1 leqPrec <*> pure (PP.text "≤") <*> pp e2 leqPrec
+> ppPrimitive _ _ = error "cant' happen (in well-typed code)"
+
+> colonclass :: PP.Doc -> PP.Doc -> PP.Doc
+> colonclass v clas = v PP.<//> PP.colon PP.<//> clas
+
+> assocclass :: PP.Doc -> PP.Doc -> PP.Doc
+> assocclass v clas = v PP.<//> PP.text "∼" PP.<//> clas
+
+> pplambda :: String -> (PP.Doc, PP.Doc) -> PP.Doc
+> pplambda lam (vclas, body) = PP.group $ PP.align $ PP.vsep [PP.group (PP.vcat [PP.text lam, vclas, PP.dot]), PP.group body]
+
+> ppapp :: PP.Doc -> PP.Doc -> PP.Doc
+> ppapp e1 e2 = PP.group $ PP.align $ PP.vsep [PP.group e1, PP.nest 2 (PP.group e2)]
+
+> pprecfun :: (PP.Doc, PP.Doc, PP.Doc, PP.Doc, PP.Doc) -> PP.Doc
+> pprecfun (f, x, targ, tres, e) = PP.group $ PP.hang 2 $ PP.vsep [PP.text "rec", PP.group (PP.sep [f, binding, PP.colon, tres]), PP.group (PP.text "is" PP.</> PP.nest 2 (PP.group e))]
+>   where
+>     binding = PP.parens (colonclass x targ)
+
+> pplet :: PP.Doc -> PP.Doc -> (PP.Doc, PP.Doc) -> PP.Doc
+> pplet unclas e1 (x,e2) = PP.fillSep [PP.text "let", PP.hang 2 binding] PP.</> PP.group (PP.hang 2 (PP.text "in" PP.</> PP.nest 2 e2))
+>   where
+>     binding = PP.group (PP.fillSep [unclas PP.<//> x, PP.text "="] PP.</> PP.hang 2 e1)
+
+> instance Pretty NominalSubst where
+>   pp (NominalSubst subs) _dk =
+>     ppsubstitution <$> traverse ppsub subs
+>     where
+>       ppsubstitution = PP.enclose (PP.text "⟨") (PP.text "⟩") . PP.fillSep . PP.punctuate PP.comma
+>       ppsub (nX, nom) = mapto <$> (fmap decorNominal . flip pp lowest) nX <*> pp nom lowest
+>       mapto nX nom = PP.group (nX PP.</> PP.text "↦") PP.</> nom
+
+> instance Pretty Nom where
+>   pp = pp . nomExpr
+
+> pretty :: Pretty a => a -> String
+> pretty a = flip PP.displayS "" $ PP.renderSmart 0.8 80 $ runLFreshM $ pp a lowest
+
+> ppretty :: Pretty a => a -> IO ()
+> ppretty a = do
+>   PP.displayIO IO.stdout $ PP.renderSmart 0.8 80 $ runLFreshM $ pp a lowest
+>   putStrLn ""
+
+Example
+
+\begin{verbatim}
+λ> ppretty (pexp @@ number 3)
+(λn:int.
+ choose
+ (νX∼int.
+  let □w = (Λp.
+            λe:□_{p} int.
+            rec
+              go (m:int) : □_{p} int
+              is if (□_{p} int;
+                     m ≤ 0;
+                     λ_:(). “1”;
+                     λ_:(). let □u = go (m + -1) in let □w = e in “⟨⟩u * ⟨⟩w”)
+                 ()) {X}
+           “X”
+           n in “λx:int. ⟨X ↦ x⟩w”))
+3
+\end{verbatim}
+
+\subection{Tracing evaluator}
+
+> instance Pretty NomCtx where
+>   pp NilNC _ = pure PP.empty
+>   pp (SnocNC (unrebind -> (NilNC, (nX, unembed -> t)))) _ = ppnombind nX t
+>   pp (SnocNC (unrebind -> (ctx, (nX, unembed -> t)))) _ = (PP.</>) <$> fmap (\pctx -> pctx PP.</> PP.comma) (pp ctx lowest) <*> ppnombind nX t
+>   pp (SnocSupNC (NilNC, sv)) _ = decorSupportVar <$> pp sv lowest
+>   pp (SnocSupNC (ctx, sv)) _ = (PP.</>) <$> fmap (\pctx -> pctx PP.</> PP.comma) (pp ctx lowest) <*> (decorSupportVar <$> pp sv lowest)
+
+> data WellTypedProgram = WellTypedProgram NomCtx Expr Type Support
+>
+> instance Pretty WellTypedProgram where
+>   pp (WellTypedProgram ctx e t sup) _ = do
+>     pctx <- pp ctx lowest
+>     pe <- pp e lowest
+>     pt <- pp t lowest
+>     psup <- pp sup lowest
+>     return $ PP.group $ PP.vcat [pctx, PP.text "⊢", pe, PP.nest 2 PP.colon, PP.nest 4 pt, PP.nest 4 psup]
+
+> traceProgram :: Expr -> IO ()
+> traceProgram initialExpr = do
+>   let tc ctx e = case runTypeCheck (inferConfiguration ctx e) of
+>         Right (t, sup) -> ppretty (WellTypedProgram ctx e t sup)
+>         Left err -> putStrLn err >> fail "(Not running)"
+>   let
+>     trace :: (Fresh m, MonadState NomCtx m, MonadError String m, MonadIO m) => Expr -> m ()
+>     trace e =
+>         if isValue e
+>         then return ()
+>         else
+>         do
+>           e' <- step e
+>           ctx <- get
+>           liftIO $ do
+>             tc ctx e'
+>             putStrLn "————"
+>           trace e'
+>   tc NilNC initialExpr
+>   putStrLn "————"
+>   _ <- runFreshMT (runExceptT (runStateT (trace initialExpr) NilNC))
+>   return ()
 > _ = ()
