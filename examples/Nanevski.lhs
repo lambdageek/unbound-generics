@@ -1,10 +1,31 @@
-This example is based on ``Staged Computation with Names and Necessity'' by Nanevski and Pfenning.
+% "Meta-programming with names and necessity" using unbound-generics
+% Aleksey Kliger
+% August 2016
 
-> {-# language DeriveDataTypeable, DeriveGeneric, MultiParamTypeClasses,
+
+Introduction
+============
+
+This example is based on Nanevski's “Meta-programming with Names and
+Necessity”[1](http://reports-archive.adm.cs.cmu.edu/anon/2002/CMU-CS-02-123R.pdf).
+In particular, it demonstrates how to represent a language with
+multiple sorts of names (value variables, code variables, nominals and
+support variables) some with non-standard notions of substitution.
+
+As a tutorial example, we show how to represent the language and
+demonstrate its operational semantics.  Additionally, this document
+includes a typecheker and pretty printer.
+
+This file is Literate Haskell, so we start with some boilerplate.
+
+Every `unbound-generics` syntax representation needs `deriving (Show, Generic, Typeable)` declarations for all the datatypes.
+
+> {-# language DeriveDataTypeable, DeriveGeneric #-}
+
+> {-# language MultiParamTypeClasses,
 >     FlexibleContexts, FlexibleInstances, DefaultSignatures, ViewPatterns, RankNTypes,
 >     GeneralizedNewtypeDeriving #-}
 > module Nanevski where
->
 > import GHC.Generics (Generic)
 > import Data.Typeable (Typeable)
 > import Unbound.Generics.LocallyNameless
@@ -22,9 +43,61 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 > import qualified Text.PrettyPrint.ANSI.Leijen as PP
 > import Text.PrettyPrint.ANSI.Leijen ()
 
-\section{Syntax}
+Introduction to meta-programming
+--------------------------------
 
-\subsection{Types}
+Meta-programming is the process of writing programs that create,
+manipulate or reason about other programs.  The meta-program is
+written in the *meta-language* and it manipulates *object-language*
+programs.
+
+In the system in this document, the object language and the
+meta-language coincide.  In general they could be different (for
+example the meta-language could be compiled down to machine code,
+while the object-language remains as some sort of abstract syntax
+trees).
+
+The type discipline of the system in this document applies both to the
+meta- and object-languages: a well-typed meta-program can only
+construct well-typed object-language programs.
+
+One important concept is the *support* of an object-language
+expression: it is the set of meta-language names that appear within
+the object-language program fragment.  The meta-language program may
+compose larger object-language fragments by substituting
+object-language expressions for the names.
+
+Example
+-------
+
+Suppose we wanted to construct the object-language cube function `“λx:int. 1 * x * x * x”`
+
+The following program constructs such a function:
+
+> -- >>> ppretty (pexp @@ number 3)
+> -- (λn:int.
+> --  choose
+> --  (νX∼int.
+> --   let □w = (Λp.
+> --             λe:□_{p} int.
+> --             rec
+> --               go (m:int) : □_{p} int
+> --               is if (□_{p} int;
+> --                      m ≤ 0;
+> --                      λ_:(). “1”;
+> --                      λ_:(). let □u = go (m + -1) in let □w = e in “⟨⟩u * ⟨⟩w”)
+> --                  ()) {X}
+> --            “X”
+> --            n in “λx:int. ⟨X ↦ x⟩w”))
+> -- 3
+
+
+Syntax
+======
+
+Types
+-----
+
 
 > data BaseType = UnitT | BoolT | IntT
 >   deriving (Typeable, Generic, Show)
@@ -50,7 +123,8 @@ This example is based on ``Staged Computation with Names and Necessity'' by Nane
 >   | ForallSupT (Bind SupportVar Type) -- support-polymorphic functions
 >   deriving (Typeable, Generic, Show)
 
-\subsection{Expressions}
+Meta-language expressions
+-------------------------
 
 > data Expr =
 >   V Var
@@ -91,7 +165,8 @@ Ordinary variables just stand for expressions.
 > isValue (PLamSupport _) = True
 > isValue _ = False
 
-\subsection{Code}
+Object-level Code
+-----------------
 
 Think of Code as some data structure that the expressions can build
 up.  Code is a first-class value in this language.  You can build it
@@ -111,7 +186,8 @@ together with an explicit subtitution that substitutes away some Nominals.
 > newtype NominalSubst = NominalSubst { nominalSubst :: [(Nominal, Nom)] }
 >   deriving (Typeable, Generic, Show)
 
-\subsection{Nominals}
+Nominals
+--------
 
 A Nominal can appear in code (but not in an expression that may be
 evaluated).  It stands for an expression just like Var, but in
@@ -122,7 +198,8 @@ add a newtype wrapper around Expr and call it a Nom.
 >   deriving (Typeable, Generic, Show)
 > type Nominal = Name Nom
 
-\subsection{Alpha renaming, free names, alpha-equivalence boilerplate}
+Alpha renaming, free names, alpha-equivalence boilerplate
+---------------------------------------------------------
 
 All the types we defined will participate in various Alpha operations:
 we can collect the free Variabes, Nominals or CodeVars of all the
@@ -139,7 +216,8 @@ renaming of bound occurrances, etc.
 > instance Alpha BaseConst
 > instance Alpha PrimOp
 
-\subsection{Substitutions}
+Substitution
+============
 
 We also have notions of substitution for variables, nominals and code variables.
 
@@ -164,7 +242,8 @@ of name.
 > instance Subst Nom PrimOp
 > instance Subst Support PrimOp
 
-\subsubsection{Expression substitution}
+Expression substitution
+-----------------------
 
 Ordinary variables can occur in expressions as well as code, noms and
 nominal substitutions.  They don't occur in types, so we can
@@ -182,7 +261,8 @@ short-circuit substitution there and return the type unchanged.
 >   subst _ _ = id
 >   substs _ = id
 
-\subsubsection{Nominal substitution}
+Nominal substitution
+--------------------
 
 > instance Subst Nom Nom
 > instance Subst Nom Support
@@ -212,7 +292,8 @@ support of a term.
 > instance Subst Nom Type
 > instance Subst Nom NominalSubst
 
-\subsubsection{Code substitution}
+Code substitution
+-----------------
 
 > instance Subst Code Code
 
@@ -244,7 +325,8 @@ us back the same unchanged syntactic object!)
 >   subst _ _ = id
 >   substs _ = id
 
-\subsubsection{Support polymorphism substitution}
+Support polymorphism substitution
+---------------------------------
 
 Support variables stand for support sets.  We have to do a bit of
 juggling to normalize the result of the substitution.
@@ -281,7 +363,8 @@ the identity.
 >   subst _ _ = id
 >   substs _ = id
 
-\section{Operational Semantics}
+Operational Semantics
+=====================
 
 The operational semantics take configurations consisting of a context
 of Nominals together with their associated types and an expression
@@ -356,9 +439,11 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > eval :: (Fresh m, MonadState NomCtx m, MonadError String m) => Expr -> m Expr
 > eval e = if isValue e then return e else step e >>= eval
   
-\subsection{Example}
+Evaluation Example
+==================
 
-\subsubsection{A little DSL for term construction}
+A little DSL for term construction
+----------------------------------
 
 > lam :: String -> Type -> (Expr -> Expr) -> Expr
 > lam s t f =
@@ -450,7 +535,8 @@ We will need to work in a monad that also gives us fresh names and a way to sign
 > (~~) = (,)
 > infix 5 ~~
 
-\subsubsection{Staged exponential function}
+Example: Staged exponential function
+------------------------------------
 
 (Note that within the calculus itself there's not a way to abstract over a nominal like this - the example below chooses a new X which appears in the definition of this helper function.)
 
@@ -481,17 +567,15 @@ configuration of \texttt{box (λx : int . x * x * x * 1)} and the used
 name X1 (which doesn't appear in the code, and therefore we could run
 the code).
 
-\begin{verbatim}
-λ> run (eval (expon @@ number 3))
-Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [V 0@0,P MulPrim [] [V 0@0,P MulPrim [] [V 0@0,C (IntC 1)]]])}),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
-\end{verbatim}
+> -- >>> run (eval (expon @@ number 3))
+> -- Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [V 0@0,P MulPrim [] [V 0@0,P MulPrim [] [V 0@0,C (IntC 1)]]])}),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 
-\begin{verbatim}
-λ> run (eval (letBox "exp3" (expon @@ number 3) $ \exp3 -> (runCode exp3) @@ number 2))
-Right (C (IntC 8),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
-\end{verbatim}
+> -- >>> run (eval (letBox "exp3" (expon @@ number 3) $ \exp3 -> (runCode exp3) @@ number 2))
+> -- Right (C (IntC 8),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 
-\subsubsection{Staged support-polymorphic exponential kernel}
+
+Example: Staged support-polymorphic exponential kernel
+------------------------------------------------------
 
 > pexpKernel :: Expr
 > pexpKernel = plam "p" $ \sp ->
@@ -502,10 +586,8 @@ Right (C (IntC 8),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 >                                           letBox "w" e $ \w ->
 >                                           box $ mul (runCode u) (runCode w))
 
-\begin{verbatim}
-λ> run $ eval (papp pexpKernel [] [] @@ box (number 42) @@ number 3)
-Right (Box (Code {codeExpr = P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),C (IntC 42)],C (IntC 42)],C (IntC 42)]}),NilNC)
-\end{verbatim}
+> -- >>> run $ eval (papp pexpKernel [] [] @@ box (number 42) @@ number 3)
+> -- Right (Box (Code {codeExpr = P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),C (IntC 42)],C (IntC 42)],C (IntC 42)]}),NilNC)
 
 > pexp :: Expr
 > pexp = lam "n" intT $ \n ->
@@ -513,17 +595,15 @@ Right (Box (Code {codeExpr = P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1
 >   letBox "w" (papp pexpKernel [nX] [] @@ box (name nX) @@ n) $ \w ->
 >   box (lam "x" intT $ \x -> code [nX ~~ x] w)
 
-\begin{verbatim}
-λ> run $ eval (pexp @@ number 5)
-Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),V 0@0],V 0@0],V 0@0],V 0@0],V 0@0])}),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
-\end{verbatim}
+> -- >>> run $ eval (pexp @@ number 5)
+> -- Right (Box (Code {codeExpr = Lambda (<(x,{BaseT IntT})> P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [P MulPrim [] [C (IntC 1),V 0@0],V 0@0],V 0@0],V 0@0],V 0@0])}),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 
-\begin{verbatim}
-λ> run $ eval (letBox "c" (pexp @@ number 5) $ \c -> runCode c @@ number 2)
-Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
-\end{verbatim}
+> -- >>> run $ eval (letBox "c" (pexp @@ number 5) $ \c -> runCode c @@ number 2)
+> -- Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 
-\section{Type checking and support inference}
+
+Appendix: Type checking and support inference
+=============================================
 
 > class Fresh m => TC m where
 >  lookupSupportVar :: SupportVar -> m () -- just check it exists
@@ -835,9 +915,8 @@ Right (C (IntC 32),SnocNC (<<NilNC>> (X1,{BaseT IntT})))
 >         emptyDelta = []
 >         emptyGamma = []
 
-\appendix
-
-\section{Pretty Printing}
+Appendix: Pretty Printing
+==========================
 
 We need our own pretty printer class because we want locally fresh
 names when we descened under binders.
@@ -1004,27 +1083,27 @@ names when we descened under binders.
 >   putStrLn ""
 
 Example
+-------
 
-\begin{verbatim}
-λ> ppretty (pexp @@ number 3)
-(λn:int.
- choose
- (νX∼int.
-  let □w = (Λp.
-            λe:□_{p} int.
-            rec
-              go (m:int) : □_{p} int
-              is if (□_{p} int;
-                     m ≤ 0;
-                     λ_:(). “1”;
-                     λ_:(). let □u = go (m + -1) in let □w = e in “⟨⟩u * ⟨⟩w”)
-                 ()) {X}
-           “X”
-           n in “λx:int. ⟨X ↦ x⟩w”))
-3
-\end{verbatim}
+> -- >>> ppretty (pexp @@ number 3)
+> -- (λn:int.
+> -- choose
+> --  (νX∼int.
+> --   let □w = (Λp.
+> --             λe:□_{p} int.
+> --             rec
+> --               go (m:int) : □_{p} int
+> --               is if (□_{p} int;
+> --                      m ≤ 0;
+> --                      λ_:(). “1”;
+> --                      λ_:(). let □u = go (m + -1) in let □w = e in “⟨⟩u * ⟨⟩w”)
+> --                  ()) {X}
+> --            “X”
+> --            n in “λx:int. ⟨X ↦ x⟩w”))
+> -- 3
 
-\subection{Tracing evaluator}
+Appendix: Tracing evaluator
+===========================
 
 > instance Pretty NomCtx where
 >   pp NilNC _ = pure PP.empty
@@ -1066,3 +1145,5 @@ Example
 >   _ <- runFreshMT (runExceptT (runStateT (trace initialExpr) NilNC))
 >   return ()
 > _ = ()
+
+
