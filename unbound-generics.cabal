@@ -96,7 +96,7 @@ Benchmark benchmark-unbound-generics
   hs-source-dirs:      benchmarks
   main-is:             benchmark-main.hs
   build-depends:       base
-                     , criterion
+                     , criterion >= 1.0.0.1
                      , deepseq >= 1.3.0.0
                      , deepseq-generics >= 0.1.1.2
                      , unbound-generics
