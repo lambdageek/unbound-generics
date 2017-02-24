@@ -101,6 +101,7 @@ Benchmark benchmark-unbound-generics
                      , unbound-generics
   if impl (ghc < 7.8)
     build-depends:     criterion < 1.1.1.0
+                     , semigroups <= 0.18.1                      
   else
     build-depends:     criterion
   other-modules:       BenchLam
