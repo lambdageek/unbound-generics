@@ -101,8 +101,7 @@ Benchmark benchmark-unbound-generics
                      , deepseq-generics >= 0.1.1.2
                      , unbound-generics
   if impl (ghc == 7.6.*)
-    build-depends:     semigroups <= 0.18.1       
-                     , unix <= 2.6.0.1
+    build-depends:     unix <= 2.6.0.1
   other-modules:       BenchLam
   ghc-options:       -Wall
 
