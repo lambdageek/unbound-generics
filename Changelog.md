@@ -1,3 +1,7 @@
+# NEXT
+
+* Tested with GHC 8.2.1
+
 # 0.3.1
 
 * Tested with GHC 8.0.1
