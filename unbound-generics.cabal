@@ -22,14 +22,14 @@ license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
 maintainer:          aleksey@lambdageek.org
-copyright:           (c) 2014-2016, Aleksey Kliger
+copyright:           (c) 2014-2017, Aleksey Kliger
 category:            Language
 build-type:          Simple
 extra-source-files:  examples/*.hs, examples/*.lhs,
                      README.md,
                      Changelog.md
 cabal-version:       >=1.10
-tested-with: GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1
+tested-with: GHC == 7.6.3, GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.1, GHC == 8.2.1
              
 library
   exposed-modules:     Unbound.Generics.LocallyNameless
