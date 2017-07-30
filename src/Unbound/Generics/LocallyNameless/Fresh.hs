@@ -19,6 +19,7 @@ import Control.Monad ()
 
 import Control.Monad.Identity
 
+import Control.Monad.Catch
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Error
@@ -53,7 +54,18 @@ class Monad m => Fresh m where
 --   still globally unused, and increments the index every time it is
 --   asked for a fresh name.
 newtype FreshMT m a = FreshMT { unFreshMT :: St.StateT Integer m a }
-  deriving (Functor, Applicative, Alternative, Monad, MonadPlus, MonadIO, MonadFix)
+  deriving
+    ( Functor
+    , Applicative
+    , Alternative
+    , Monad
+    , MonadIO
+    , MonadPlus
+    , MonadFix
+    , MonadThrow
+    , MonadCatch
+    , MonadMask
+    )
 
 -- | Run a 'FreshMT' computation (with the global index starting at zero).
 runFreshMT :: Monad m => FreshMT m a -> m a
