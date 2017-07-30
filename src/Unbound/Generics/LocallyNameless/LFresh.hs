@@ -63,6 +63,7 @@ import qualified Data.Set as S
 import Data.Monoid
 import Data.Typeable (Typeable)
 
+import Control.Monad.Catch
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Applicative (Applicative, Alternative)
@@ -102,7 +103,18 @@ class Monad m => LFresh m where
 -- avoid, and when asked for a fresh one will choose the first numeric
 -- prefix of the given name which is currently unused.
 newtype LFreshMT m a = LFreshMT { unLFreshMT :: ReaderT (Set AnyName) m a }
-  deriving (Functor, Applicative, Alternative, Monad, MonadIO, MonadPlus, MonadFix)
+  deriving
+    ( Functor
+    , Applicative
+    , Alternative
+    , Monad
+    , MonadIO
+    , MonadPlus
+    , MonadFix
+    , MonadThrow
+    , MonadCatch
+    , MonadMask
+    )
 
 -- | Run an 'LFreshMT' computation in an empty context.
 runLFreshMT :: LFreshMT m a -> m a
