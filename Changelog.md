@@ -1,6 +1,8 @@
 # NEXT
 
 * Tested with GHC 8.2.1
+* Added "exceptions" dependency and `MonadThrow`, `MonadCatch`, `MonadMask` instances for `FreshMT` and `LFreshMT`.
+  Thanks Alex McKenna.
 
 # 0.3.1
 

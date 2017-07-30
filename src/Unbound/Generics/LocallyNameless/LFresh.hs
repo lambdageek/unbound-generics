@@ -63,7 +63,7 @@ import qualified Data.Set as S
 import Data.Monoid
 import Data.Typeable (Typeable)
 
-import Control.Monad.Catch
+import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Applicative (Applicative, Alternative)

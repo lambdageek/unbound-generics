@@ -19,7 +19,7 @@ import Control.Monad ()
 
 import Control.Monad.Identity
 
-import Control.Monad.Catch
+import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Error
