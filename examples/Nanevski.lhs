@@ -544,7 +544,7 @@ First a little recursive helper function that expands out to the m-fold multipli
 
 > exp' :: Nominal -> Expr
 > exp' nX = recFun "exp'" "m" intT (boxT_ intT [nX]) $ \exp' m ->
->   ifLeqZ intT m (box $ number 1) (letBox "u" (exp' @@ (sub1 m)) $ \u ->
+>   ifLeqZ (boxT_ intT [nX]) m (box $ number 1) (letBox "u" (exp' @@ (sub1 m)) $ \u ->
 >                                      box $ mul (name nX) (runCode u))
 >   
 
