@@ -262,12 +262,13 @@ instance Functor (FFM f) where
   {-# INLINE fmap #-}
 
 instance Applicative (FFM f) where
-  pure = return
+  pure x = FFM (\r _j -> r x)
+  {-# INLINE pure #-}
   (FFM h) <*> (FFM k) = FFM (\r j -> h (\f -> k (r . f) j) j)
   {-# INLINE (<*>) #-}
 
 instance Monad (FFM f) where
-  return x = FFM (\r _j -> r x)
+  return = pure
   {-# INLINE return #-}
   (FFM h) >>= f = FFM (\r j -> h (\x -> runFFM (f x) r j) j)
   {-# INLINE (>>=) #-}
