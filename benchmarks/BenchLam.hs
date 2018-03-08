@@ -10,7 +10,6 @@ import GHC.Generics (Generic)
 import Data.Typeable (Typeable)
 
 import Control.DeepSeq (NFData(..), deepseq)
-import Control.DeepSeq.Generics (genericRnf)
 import Criterion (Benchmark, env, bench, nf)
 
 import Unbound.Generics.LocallyNameless
@@ -24,7 +23,7 @@ data Term =
     deriving (Show, Generic, Typeable)
 
 instance Alpha Term
-instance NFData Term where rnf = genericRnf
+instance NFData Term
 
 
 -- | lambda abstract over all the given vars
