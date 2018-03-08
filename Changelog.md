@@ -1,6 +1,13 @@
 # NEXT
 
-* Tested with GHC 8.2.1
+# 0.3.2
+
+* Bump `deepseq >= 1.4.0.0` remove benchmark dependency on `deepseq-generics`
+* Tested with GHC 8.4.1
+* Tested with GHC 8.2.2
+* Compile with `-Wcompat`
+* Add `Semigroup` instances for all types that were previously `Monoid` instances
+* Added more examples to the [examples/ directory](https://github.com/lambdageek/unbound-generics/tree/master/examples)
 * Added "exceptions" dependency and `MonadThrow`, `MonadCatch`, `MonadMask` instances for `FreshMT` and `LFreshMT`.
   Thanks Alex McKenna.
 
