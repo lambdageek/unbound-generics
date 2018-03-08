@@ -60,6 +60,7 @@ import Data.Foldable (Foldable(..))
 import Data.List (intersect)
 import Data.Monoid (Monoid(..), (<>), All(..))
 import Data.Ratio (Ratio)
+import Data.Semigroup as Sem
 import Data.Typeable (Typeable, gcast, typeOf)
 import GHC.Generics
 
@@ -117,12 +118,16 @@ isZeroLevelCtx ctx = ctxLevel ctx == 0
 -- @
 newtype DisjointSet a = DisjointSet (Maybe [a])
 
-instance Eq a => Monoid (DisjointSet a) where
-  mempty = DisjointSet (Just [])
-  mappend s1 s2 =
+-- | @since 0.3.2
+instance Eq a => Sem.Semigroup (DisjointSet a) where
+  (<>) = \s1 s2 ->
     case (s1, s2) of
       (DisjointSet (Just xs), DisjointSet (Just ys)) | disjointLists xs ys -> DisjointSet (Just (xs <> ys))
       _ -> inconsistentDisjointSet
+
+instance Eq a => Monoid (DisjointSet a) where
+  mempty = DisjointSet (Just [])
+  mappend = (<>)
 
 instance Foldable DisjointSet where
   foldMap summarize (DisjointSet ms) = foldMap (foldMap summarize) ms
@@ -292,12 +297,16 @@ retractFFM (FFM h) = h return j
 -- is the @i@th name in @a@
 newtype NthPatFind = NthPatFind { runNthPatFind :: Integer -> Either Integer AnyName }
 
-instance Monoid NthPatFind where
-  mempty = NthPatFind Left
-  mappend (NthPatFind f) (NthPatFind g) =
+-- | @since 0.3.2
+instance Sem.Semigroup NthPatFind where
+  (<>) = \(NthPatFind f) (NthPatFind g) ->
     NthPatFind $ \i -> case f i of
     Left i' -> g i'
     found@Right {} -> found
+
+instance Monoid NthPatFind where
+  mempty = NthPatFind Left
+  mappend = (<>)
 
 -- | The result of @'namePatFind' a x@ is either @Left i@ if @a@ is a pattern that
 -- contains @i@ free names none of which are @x@, or @Right j@ if @x@ is the @j@th name
@@ -307,14 +316,18 @@ newtype NamePatFind = NamePatFind { runNamePatFind :: AnyName
                                                       -- Right - index of the name we found
                                                       -> Either Integer Integer }
 
-instance Monoid NamePatFind where
-  mempty = NamePatFind (\_ -> Left 0)
-  mappend (NamePatFind f) (NamePatFind g) =
+-- | @since 0.3.2
+instance Sem.Semigroup NamePatFind where
+  (<>) = \(NamePatFind f) (NamePatFind g) ->
     NamePatFind $ \nm -> case f nm of
     ans@Right {} -> ans
     Left n -> case g nm of
       Left m -> Left $! n + m
       Right i -> Right $! n + i
+
+instance Monoid NamePatFind where
+  mempty = NamePatFind (\_ -> Left 0)
+  mappend = (<>)
 
 -- | The "Generic" representation version of 'Alpha'
 class GAlpha f where

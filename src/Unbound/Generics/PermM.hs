@@ -50,6 +50,7 @@ import Prelude (Eq(..), Show(..), (.), ($), Monad(return), Ord(..), Maybe(..), o
 import Data.Monoid
 import Data.List
 import Data.Map (Map)
+import Data.Semigroup as Sem
 import qualified Data.Map as M
 import qualified Data.Set as S
 import Control.Arrow ((&&&))
@@ -97,10 +98,15 @@ compose (Perm b) (Perm a) =
   Perm (M.fromList ([ (x,M.findWithDefault y y b) | (x,y) <- M.toList a]
          ++ [ (x, M.findWithDefault x x b) | x <- M.keys b, M.notMember x a]))
 
--- | Permutations form a monoid under composition.
+-- | Permutations form a semigroup under 'compose'.
+-- @since 0.3.2
+instance Ord a => Sem.Semigroup (Perm a) where
+  (<>) = compose
+
+-- | Permutations form a monoid with identity 'empty'.
 instance Ord a => Monoid (Perm a) where
   mempty  = empty
-  mappend = compose
+  mappend = (<>)
 
 -- | Is this the identity permutation?
 isid :: Ord a => Perm a -> Bool
