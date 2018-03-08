@@ -58,7 +58,7 @@ import Data.Function (on)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Foldable (Foldable(..))
 import Data.List (intersect)
-import Data.Monoid (Monoid(..), (<>), All(..))
+import Data.Monoid (All(..))
 import Data.Ratio (Ratio)
 import Data.Semigroup as Sem
 import Data.Typeable (Typeable, gcast, typeOf)
