@@ -1,5 +1,5 @@
 -- | Untyped lambda calc for benchmarking
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, CPP #-}
 module BenchLam where
 
 import Control.Applicative
@@ -10,6 +10,10 @@ import GHC.Generics (Generic)
 import Data.Typeable (Typeable)
 
 import Control.DeepSeq (NFData(..), deepseq)
+#if MIN_VERSION_deepseq (1,4,0)
+#else
+import Control.DeepSeq.Generics (genericRnf)
+#endif
 import Criterion (Benchmark, env, bench, nf)
 
 import Unbound.Generics.LocallyNameless
@@ -23,7 +27,11 @@ data Term =
     deriving (Show, Generic, Typeable)
 
 instance Alpha Term
+#if MIN_VERSION_deepseq (1,4,0)
 instance NFData Term
+#else
+instance NFData Term where rnf = genericRnf
+#endif
 
 
 -- | lambda abstract over all the given vars
