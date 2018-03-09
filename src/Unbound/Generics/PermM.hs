@@ -47,6 +47,7 @@ module Unbound.Generics.PermM (
   ) where
 
 import Prelude (Eq(..), Show(..), (.), ($), Monad(return), Ord(..), Maybe(..), otherwise, (&&), Bool(..), id, uncurry, Functor(..))
+import Data.Monoid hiding ((<>))
 import Data.List
 import Data.Map (Map)
 import Data.Semigroup as Sem
