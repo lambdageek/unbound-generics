@@ -1,5 +1,9 @@
 # NEXT
 
+# 0.3.3
+
+* Bump `exceptions` upper bound to support `0.10.0`
+
 # 0.3.2
 
 * Bump `deepseq >= 1.4.0.0` remove benchmark dependency on `deepseq-generics`
