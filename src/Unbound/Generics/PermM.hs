@@ -119,7 +119,7 @@ isid (Perm p) =
 join :: Ord a => Perm a -> Perm a -> Maybe (Perm a)
 join (Perm p1) (Perm p2) =
      let overlap = M.intersectionWith (==) p1 p2 in
-     if M.fold (&&) True overlap then
+     if M.foldr (&&) True overlap then
        Just (Perm (M.union p1 p2))
        else Nothing
 
