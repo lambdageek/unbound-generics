@@ -87,6 +87,11 @@
   Thanks Reed Mullanix (TOTWBF) for finding and fixing this issue.
   https://github.com/lambdageek/unbound-generics/issues/26
 
+# 0.3.4
+
+* Bump `containers` upper bound to support `0.6`.
+  (GHC 8.6.1 support)
+  Thanks Christiaan Baaij.
 
 # 0.3.3
 
