@@ -1,5 +1,9 @@
 # NEXT
 
+* Bump `containers` upper bound to support `0.6`.
+  (GHC 8.6.1 support)
+  Thanks Christiaan Baaij.
+
 # 0.3.3
 
 * Bump `exceptions` upper bound to support `0.10.0`
