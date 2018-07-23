@@ -90,10 +90,10 @@ class Subst b a where
   subst n u x =
     if (isFreeName n)
     then case (isvar x :: Maybe (SubstName a b)) of
-      Just (SubstName m) -> if m == n then u else x
-      Nothing -> case (isCoerceVar x :: Maybe (SubstCoerce a b)) of
-        Just (SubstCoerce m f) -> if m == n then maybe x id (f u) else x
-        Nothing -> to $ gsubst n u (from x)
+      Just (SubstName m) | m == n -> u
+      _ -> case (isCoerceVar x :: Maybe (SubstCoerce a b)) of
+        Just (SubstCoerce m f) | m == n -> maybe x id (f u)
+        _ -> to $ gsubst n u (from x)
     else error $ "Cannot substitute for bound variable " ++ show n
 
   substs :: [(Name b, b)] -> a -> a
@@ -101,16 +101,10 @@ class Subst b a where
   substs ss x
     | all (isFreeName . fst) ss =
       case (isvar x :: Maybe (SubstName a b)) of
-        Just (SubstName m) ->
-          case find ((==m) . fst) ss of
-            Just (_, u) -> u
-            Nothing     -> x
-        Nothing -> case isCoerceVar x :: Maybe (SubstCoerce a b) of 
-            Just (SubstCoerce m f) ->
-              case find ((==m) . fst) ss of 
-                  Just (_, u) -> maybe x id (f u)
-                  Nothing -> x
-            Nothing -> to $ gsubsts ss (from x)
+        Just (SubstName m) | Just (_, u) <- find ((==m) . fst) ss -> u
+        _ -> case isCoerceVar x :: Maybe (SubstCoerce a b) of 
+            Just (SubstCoerce m f) | Just (_, u) <- find ((==m) . fst) ss -> maybe x id (f u)
+            _ -> to $ gsubsts ss (from x)
     | otherwise =
       error $ "Cannot substitute for bound variable in: " ++ show (map fst ss)
 
