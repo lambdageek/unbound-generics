@@ -7,6 +7,7 @@ import TestParallelReduction
 import PropOpenClose
 import TinyLam
 import TestACompare
+import TestRefine
 import TestShiftEmbed
 import TestTH
 
@@ -16,6 +17,7 @@ main = defaultMain $ testGroup "unboundGenerics"
          test_calc
        , test_parallelReduction
        , test_openClose
+       , test_refine
        , test_tinyLam
        , test_acompare
        , test_shiftEmbed
