@@ -1,5 +1,52 @@
 # NEXT
 
+(major version bump)
+
+* Fix an issue in substitution where traversal would not continue in
+  an AST node for which `isvar` or `isCoerceVar` is defined to return
+  non-`Nothing` but which had additional structure.
+
+  For example, in a language with meta variables and explicit substitutions:
+  ```haskell
+     data Expr =
+	   ...
+         -- normal variables that stand for expressions
+       | Var (Name Expr)
+          -- a meta variable occurrence and an explicit substitution
+		  -- of expressions to substitute in for the free variables
+	   | MetaVar (Name Meta) [(Name Expr, Expr)]
+     -- a meta variable stands for an expression with some free term vars
+	 data Meta = MetaVar Expr
+
+     -- substitution for a meta in an expression
+	 instance Subst Expr Meta where
+	   isCoerceVar (MetaVar u sub) = Just (SubstCoerce u (Just . applyExplicitSubst sub))
+	 applyExplicitSubst :: [(Name Expr, Expr)] -> Meta -> Expr
+	 applyExplicitSubst s (MetaVar e) = substs s e
+  ```
+
+  Given an expression `e1` defined as `MetaVar "u" [("x", 10)]`, we may want to
+  substitute a `Meta ("x" + "x")` for `"u"`  to get `10 + 10` (that is,
+  we replace `"u"` by the expression `"x" + "x"` and immediately apply
+  the substitution `10` for `"x"`).
+
+  Now suppose have expression `e2` defined as `MetaVar "v" [("y",
+  e1)]` (that is, an occurrence of meta var "v" together with a
+  substitution of `e1` from above for `"y"`).  If we again try to
+  substitute `Meta ("x" + "x")` for `"u"` in `e2`, we would expect to
+  get `MetaVar "v" [("y", 10 + 10)]` (that is, since "v" is not equal to
+  "u", we leave the meta var alone, but substitute for any occurrences
+  of "u" in the explicit substitution, so `e1` becomes `10 + 10` as
+  before).
+
+  The bug in previous versions of `unbound-generics` was that we would
+  incorrectly leave `MetaVar "v" [("y", e1)]` unchanged as soon as we
+  saw that `isCoerceVar (MetaVar "v" [("y", e1)])` returned `Nothing`.
+
+  Thanks Reed Mullanix (TOTWBF) for finding and fixing this issue.
+  https://github.com/lambdageek/unbound-generics/issues/26
+
+
 # 0.3.3
 
 * Bump `exceptions` upper bound to support `0.10.0`
