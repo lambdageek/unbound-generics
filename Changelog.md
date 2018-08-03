@@ -30,7 +30,7 @@
   we replace `"u"` by the expression `"x" + "x"` and immediately apply
   the substitution `10` for `"x"`).
 
-  Now suppose have expression `e2` defined as `MetaVar "v" [("y",
+  Now suppose we have an expression `e2` defined as `MetaVar "v" [("y",
   e1)]` (that is, an occurrence of meta var "v" together with a
   substitution of `e1` from above for `"y"`).  If we again try to
   substitute `Meta ("x" + "x")` for `"u"` in `e2`, we would expect to
@@ -41,7 +41,8 @@
 
   The bug in previous versions of `unbound-generics` was that we would
   incorrectly leave `MetaVar "v" [("y", e1)]` unchanged as soon as we
-  saw that `isCoerceVar (MetaVar "v" [("y", e1)])` returned `Nothing`.
+  saw that `isCoerceVar (MetaVar "v" [("y", e1)])` returned
+  `Just (SubstCoerce "u" ...)` where `"u" /= "v"`.
 
   Thanks Reed Mullanix (TOTWBF) for finding and fixing this issue.
   https://github.com/lambdageek/unbound-generics/issues/26
