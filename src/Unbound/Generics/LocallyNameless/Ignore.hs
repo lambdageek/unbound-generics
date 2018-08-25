@@ -18,7 +18,7 @@ import GHC.Generics (Generic)
 import Unbound.Generics.LocallyNameless.Alpha
 
 -- | Ignores a term 't' for the purpose of alpha-equality and substitution
-data Ignore t = I t
+data Ignore t = I !t
         deriving (Generic)
 
 instance (NFData t) => NFData (Ignore t) where
