@@ -82,6 +82,8 @@ Test-Suite test-unbound-generics
                        TestParallelReduction
                        PropOpenClose
                        TinyLam
+                       TestRefine
+                       TestIgnore
                        TestACompare
                        TestShiftEmbed
                        TestTH
