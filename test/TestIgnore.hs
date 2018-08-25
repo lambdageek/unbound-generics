@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric, MultiParamTypeClasses #-}
+{-# LANGUAGE DeriveGeneric, DeriveDataTypeable, MultiParamTypeClasses #-}
 module TestIgnore (test_ignore) where
 
 import Data.Typeable(Typeable)
