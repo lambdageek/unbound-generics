@@ -38,6 +38,7 @@ library
                        Unbound.Generics.LocallyNameless.LFresh
                        Unbound.Generics.LocallyNameless.Alpha
                        Unbound.Generics.LocallyNameless.Bind
+                       Unbound.Generics.LocallyNameless.Ignore
                        Unbound.Generics.LocallyNameless.Rebind
                        Unbound.Generics.LocallyNameless.Embed
                        Unbound.Generics.LocallyNameless.Shift
