@@ -12,6 +12,8 @@ module Unbound.Generics.LocallyNameless.Ignore (
     ) where
 
 import Control.DeepSeq (NFData(..))
+import Control.Applicative
+import Data.Monoid 
 
 import GHC.Generics (Generic)
 
