@@ -42,6 +42,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , luntrec
        , Ignore
        , ignore
+       , unignore
        ) where
 
 import Control.Applicative (Applicative)
@@ -220,3 +221,7 @@ luntrec (TRec b) =
 -- | Constructor for ignoring a term for the purposes of alpha-equality and substs
 ignore :: t -> Ignore t
 ignore t = I t
+
+-- | Destructor for ignored terms
+unignore :: Ignore t -> t
+unignore (I t) = t
