@@ -2,6 +2,46 @@
 
 (major version bump)
 
+* New binding specification type `Ignore`.
+
+  Any two `Ignore T` terms will always be alpha-equivalent to each other, will
+  be considered to contain no variables, and will not have any substitution
+  apply beneath `Ignore`.  Useful for attaching annotation terms to your AST.
+
+  ```haskell
+    import Text.Parsec.Pos (SourcePos)
+    
+	data Expr =
+	   ...
+	   | Lambda (Ignore SourcePos) (Bind (Name Expr) Expr)
+  ```
+
+  As expected, any two `Lambda` expressions will be considered alpha-equivalent
+  even if they differ in source position.
+
+  Note that the `Ignore` will block operations on `Name a` for all `a`, which can be a little unexpected:
+
+  ```haskell
+    data Ty =
+	  TyVar (Name Ty)
+      | TyArr Ty Ty
+    
+    instance Subst Ty Ty where
+	  ...
+
+	data Expr =
+	  ...
+	  | Var (Name Expr)
+	  | Lambda (Ignore Ty) (Bind (Name Expr) Expr)
+    
+     instance Subst Ty Expr
+  ```
+
+  Applying a substitution of a type for a free type variable to a `Lambda` will
+  not descend into the `Ignore Ty`.
+
+  Thanks Reed Mullanix (TOTWBF) for the new operation.
+
 * Fix an issue in substitution where traversal would not continue in
   an AST node for which `isvar` or `isCoerceVar` is defined to return
   non-`Nothing` but which had additional structure.
