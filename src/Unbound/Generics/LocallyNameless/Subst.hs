@@ -56,6 +56,7 @@ import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Alpha
 import Unbound.Generics.LocallyNameless.Embed
 import Unbound.Generics.LocallyNameless.Shift
+import Unbound.Generics.LocallyNameless.Ignore
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.LocallyNameless.Rec
@@ -179,3 +180,7 @@ instance (Subst c p1, Subst c p2) => Subst c (Rebind p1 p2)
 instance (Subst c p) => Subst c (Rec p)
 
 instance (Alpha p, Subst c p) => Subst c (TRec p)
+
+instance Subst a (Ignore b) where
+  subst _ _ = id
+  substs _ = id

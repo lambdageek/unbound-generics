@@ -40,6 +40,9 @@ module Unbound.Generics.LocallyNameless.Operations
        , trec
        , untrec
        , luntrec
+       , Ignore
+       , ignore
+       , unignore
        ) where
 
 import Control.Applicative (Applicative)
@@ -55,6 +58,7 @@ import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Embed (Embed(..), IsEmbed(..))
 import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.LocallyNameless.Rec
+import Unbound.Generics.LocallyNameless.Ignore
 import Unbound.Generics.LocallyNameless.Internal.Fold (toListOf, justFiltered)
 import Unbound.Generics.LocallyNameless.Internal.Lens (view)
 import Unbound.Generics.LocallyNameless.Internal.Iso (from)
@@ -213,3 +217,11 @@ untrec (TRec b) = do
 luntrec :: (Alpha p, LFresh m) => TRec p -> m p
 luntrec (TRec b) =
   lunbind b $ \(p, ()) -> return (unrec p)
+
+-- | Constructor for ignoring a term for the purposes of alpha-equality and substs
+ignore :: t -> Ignore t
+ignore t = I t
+
+-- | Destructor for ignored terms
+unignore :: Ignore t -> t
+unignore (I t) = t
