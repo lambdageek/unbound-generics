@@ -1,4 +1,4 @@
-# NEXT
+# 0.3.4
 
 * Bump `containers` upper bound to support `0.6`.
   (GHC 8.6.1 support)
