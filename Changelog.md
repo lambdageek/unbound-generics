@@ -1,6 +1,6 @@
 # NEXT
 
-(major version bump)
+# 0.4.0
 
 * New binding specification type `Ignore`.
 
