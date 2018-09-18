@@ -40,6 +40,7 @@ module Unbound.Generics.LocallyNameless.Operations
        , trec
        , untrec
        , luntrec
+         -- * Opaque terms
        , Ignore
        , ignore
        , unignore
