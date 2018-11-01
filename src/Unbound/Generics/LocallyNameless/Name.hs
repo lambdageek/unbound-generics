@@ -35,7 +35,7 @@ import GHC.Generics (Generic)
 -- type @a@.  The type @a@ is used as a tag to distinguish these names
 -- from names that may stand for other sorts of terms.
 --
--- Two names in a term are consider
+-- Two names in a term are considered
 -- 'Unbound.Generics.LocallyNameless.Operations.aeq' equal when they
 -- are the same name (in the sense of '(==)').  In patterns, however,
 -- any two names are equal if they occur in the same place within the
