@@ -5,9 +5,12 @@
 -- Maintainer : Aleksey Kliger
 -- Stability  : experimental
 --
-{-# LANGUAGE DeriveGeneric, DeriveDataTypeable #-}
+{-# LANGUAGE CPP, DeriveGeneric, DeriveDataTypeable #-}
 module Calc where
 
+#if MIN_VERSION_base(4,9,0) && !MIN_VERSION_base(4,11,0)
+import Control.Monad.Fail (MonadFail)
+#endif
 import Control.Arrow (second)
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)

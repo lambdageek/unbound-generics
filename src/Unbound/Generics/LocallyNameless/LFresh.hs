@@ -45,6 +45,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
              , GeneralizedNewtypeDeriving
              , FlexibleInstances
              , MultiParamTypeClasses
+             , StandaloneDeriving
              , UndecidableInstances #-}
 module Unbound.Generics.LocallyNameless.LFresh
        (
@@ -64,6 +65,9 @@ import Data.Monoid
 import Data.Typeable (Typeable)
 
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
+#if MIN_VERSION_base(4,9,0)
+import qualified Control.Monad.Fail as Fail
+#endif
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Applicative (Applicative, Alternative)
@@ -108,7 +112,6 @@ newtype LFreshMT m a = LFreshMT { unLFreshMT :: ReaderT (Set AnyName) m a }
     , Applicative
     , Alternative
     , Monad
-    , MonadFail
     , MonadIO
     , MonadPlus
     , MonadFix
@@ -116,6 +119,10 @@ newtype LFreshMT m a = LFreshMT { unLFreshMT :: ReaderT (Set AnyName) m a }
     , MonadCatch
     , MonadMask
     )
+
+#if MIN_VERSION_base(4,9,0)
+deriving instance Fail.MonadFail m => Fail.MonadFail (LFreshMT m)
+#endif
 
 -- | Run an 'LFreshMT' computation in an empty context.
 runLFreshMT :: LFreshMT m a -> m a

@@ -8,6 +8,7 @@
 -- Global freshness monad.
 {-# LANGUAGE CPP, GeneralizedNewtypeDeriving,
              FlexibleInstances, MultiParamTypeClasses,
+             StandaloneDeriving,
              UndecidableInstances
   #-}
 -- (we expect deprecation warnings about Control.Monad.Trans.Error)
@@ -20,6 +21,9 @@ import Control.Monad ()
 import Control.Monad.Identity
 
 import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
+#if MIN_VERSION_base(4,9,0)
+import qualified Control.Monad.Fail as Fail
+#endif
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Error
@@ -59,7 +63,6 @@ newtype FreshMT m a = FreshMT { unFreshMT :: St.StateT Integer m a }
     , Applicative
     , Alternative
     , Monad
-    , MonadFail
     , MonadIO
     , MonadPlus
     , MonadFix
@@ -67,6 +70,10 @@ newtype FreshMT m a = FreshMT { unFreshMT :: St.StateT Integer m a }
     , MonadCatch
     , MonadMask
     )
+
+#if MIN_VERSION_base(4,9,0)
+deriving instance Fail.MonadFail m => Fail.MonadFail (FreshMT m)
+#endif
 
 -- | Run a 'FreshMT' computation (with the global index starting at zero).
 runFreshMT :: Monad m => FreshMT m a -> m a
