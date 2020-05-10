@@ -108,6 +108,7 @@ newtype LFreshMT m a = LFreshMT { unLFreshMT :: ReaderT (Set AnyName) m a }
     , Applicative
     , Alternative
     , Monad
+    , MonadFail
     , MonadIO
     , MonadPlus
     , MonadFix

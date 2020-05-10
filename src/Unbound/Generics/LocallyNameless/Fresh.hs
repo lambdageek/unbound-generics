@@ -59,6 +59,7 @@ newtype FreshMT m a = FreshMT { unFreshMT :: St.StateT Integer m a }
     , Applicative
     , Alternative
     , Monad
+    , MonadFail
     , MonadIO
     , MonadPlus
     , MonadFix

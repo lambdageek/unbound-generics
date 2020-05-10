@@ -67,7 +67,7 @@ extendEnv :: Var -> Expr -> Env -> Env
 extendEnv v e rho w =
   if v == w then Just e else rho w
 
-whnf :: (Fresh m) => Env -> Expr -> m Expr
+whnf :: (MonadFail m, Fresh m) => Env -> Expr -> m Expr
 whnf rho (V v) = case rho v of
   Just e -> return e
   Nothing -> fail $ "unbound variable " ++ show v
@@ -76,7 +76,7 @@ whnf rho (Add e1 e2) = do
   v1 <- whnf rho e1
   v2 <- whnf rho e2
   add v1 v2
-  where add :: Monad m => Expr -> Expr -> m Expr
+  where add :: MonadFail m => Expr -> Expr -> m Expr
         add (C i1) (C i2) = return (C $ i1 + i2)
         add _ _ = fail "add of two non-integers"
 whnf rho0 (Let b) = do
@@ -91,7 +91,7 @@ whnf rho0 (LetStar b) = do
   rho' <- whnfLsb lsb rho0
   whnf rho' body
 
-whnfLsb :: Fresh m => LetStarBinds -> Env -> m Env
+whnfLsb :: (MonadFail m, Fresh m) => LetStarBinds -> Env -> m Env
 whnfLsb EmptyLSB = return
 whnfLsb (ConsLSB rbnd) = \rho -> do
   let ((v, Embed e), lsb) = unrebind rbnd
