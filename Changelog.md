@@ -1,5 +1,11 @@
 # NEXT
 
+# 0.4.1
+
+* Add `MonadFail` instances for `LFreshMT` and `FreshMT`
+
+* Builds with GHC 8.10
+
 # 0.4.0
 
 * New binding specification type `Ignore`.
