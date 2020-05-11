@@ -34,6 +34,9 @@ matrix:
     - env: CABALVER=2.4 GHCVER=8.6.1 CABAL_OPTIONS=--allow-newer=base,containers,binary
       compiler: ": #GHC 8.6.1"
       addons: {apt: {packages: [cabal-install-2.4,ghc-8.6.1], sources: [hvr-ghc]}}
+    - env: CABALVER=3.2 GHCVER=8.10.1
+      compiler: ": #GHC 8.10.1"
+      addons: {apt: {packages: [cabal-install-3.2,ghc-8.10.1], sources: [hvr-ghc]}}
 
 before_install:
  - unset CC
