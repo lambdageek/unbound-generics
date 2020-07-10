@@ -1,5 +1,8 @@
 # NEXT
 
+* Add `Functor` instance for `Unbound.Generics.LocallyNameless.Internal.Iso.Exchange`
+  Thanks to Emily Pillmore (emilypi)
+
 # 0.4.1
 
 * Add `MonadFail` instances for `LFreshMT` and `FreshMT`
