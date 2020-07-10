@@ -6,6 +6,9 @@ import Data.Functor.Identity (Identity(..))
 
 data Exchange a b s t = Exchange (s -> a) (b -> t)
 
+instance Functor (Exchange a b s) where
+  fmap f (Exchange p q) = Exchange p (f . q)
+
 instance Profunctor (Exchange a b) where
   dimap f g (Exchange h k) = Exchange (h . f ) (g . k)
 
