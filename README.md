@@ -1,6 +1,7 @@
 # unbound-generics
 
 [![Join the chat at https://gitter.im/lambdageek/unbound-generics](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/lambdageek/unbound-generics?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Discord](https://img.shields.io/discord/732650960471720076?logo=discord)](https://discord.gg/CRfu93W)
 
 [![Hackage](https://img.shields.io/hackage/v/unbound-generics.svg)](https://hackage.haskell.org/package/unbound-generics)
 [![Build Status](https://travis-ci.org/lambdageek/unbound-generics.svg)](https://travis-ci.org/lambdageek/unbound-generics)
