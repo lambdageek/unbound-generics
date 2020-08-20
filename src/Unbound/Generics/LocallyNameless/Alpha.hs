@@ -25,6 +25,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , NthPatFind(..)
   , NamePatFind(..)
   , AlphaCtx
+  , ctxLevel
   , initialCtx
   , patternCtx
   , termCtx

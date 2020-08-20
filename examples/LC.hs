@@ -48,8 +48,7 @@ red (App e1 e2) = do
   e2' <- red e2
   case e1' of
     Lam bnd -> do
-        (x, e1'') <- unbind bnd
-        return $ subst x e2' e1''
+        return $ substBind bnd e2'
     otherwise -> return $ App e1' e2'
 red (Lam bnd) = do
    (x, e) <- unbind bnd
@@ -105,3 +104,4 @@ main = do
   assertM "be3" $ if_ true (Var x) (Var y) =~ Var x
   assertM "be4" $ if_ false (Var x) (Var y) =~ Var y
   assertM "be5" $ App (App plus one) two =~ three
+  print "Done"

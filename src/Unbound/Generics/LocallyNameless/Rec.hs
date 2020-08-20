@@ -13,7 +13,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Unbound.Generics.LocallyNameless.Rec
        (
-         Rec
+         Rec (Rec)
        , rec
        , unrec
        , TRec (..)
