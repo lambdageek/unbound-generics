@@ -13,23 +13,8 @@ import Test.Tasty.QuickCheck (testProperty)
 import Unbound.Generics.LocallyNameless
 import Unbound.Generics.LocallyNameless.Internal.Fold (foldMapOf, toListOf)
 
-----------------------------------------
--- Property testing utilities
+import AlphaProperties
 
-isFreeIn :: (Typeable a, Alpha b) => Name a -> b -> Bool
-isFreeIn = elementOf fv
-  where
-    elementOf l = anyOf l . (==)
-    anyOf l f = getAny . foldMapOf l (Any . f)
-
-notFreeIn :: (Typeable a, Alpha b) => Name a -> b -> Bool
-notFreeIn v = not . isFreeIn v
-
-(=~=) :: (Alpha a, Show a) => a -> a -> Property
-x =~= y = counterexample (show x ++ " not alpha equivalent to " ++ show y) (x `aeq` y)
-
-(/~@) :: (Typeable a, Alpha b, Show b) => Name a -> b -> Property
-v /~@ t = counterexample (show v ++ " is free in " ++ show t) (v `notFreeIn` t)
 
 -- Wrapper around 'Name a' that has an Arbitrary instance that generates free names.
 -- Note that this doesn't guarantee /freshness/.  The name may clash with some other one.

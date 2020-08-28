@@ -87,6 +87,8 @@ Test-Suite test-unbound-generics
                        TestACompare
                        TestShiftEmbed
                        TestTH
+                       TestSubstBind
+                       AlphaProperties
   build-depends:       base,
                        mtl,
                        tasty,
