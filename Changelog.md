@@ -1,9 +1,11 @@
 # NEXT
 
+# 0.4.2
+
 * Add `Functor` instance for `Unbound.Generics.LocallyNameless.Internal.Iso.Exchange`
   Thanks to Emily Pillmore (emilypi)
 * Import `MonadPlus` and `MonadFix` explicitly when building with mtl-2.3
-* Builds with GHC 9.0
+* Builds with GHC 9.0, GHC 9.2
 
 # 0.4.1
 
