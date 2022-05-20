@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                unbound-generics
-version:             0.4.1
+version:             0.4.2
 synopsis:            Support for programming with names and binders using GHC Generics
 description:         Specify the binding structure of your data type with an
                      expressive set of type combinators, and unbound-generics
@@ -22,14 +22,14 @@ license:             BSD3
 license-file:        LICENSE
 author:              Aleksey Kliger
 maintainer:          aleksey@lambdageek.org
-copyright:           (c) 2014-2020, Aleksey Kliger
+copyright:           (c) 2014-2022, Aleksey Kliger
 category:            Language
 build-type:          Simple
 extra-source-files:  examples/*.hs, examples/*.lhs,
                      README.md,
                      Changelog.md
 cabal-version:       >=1.10
-tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.3, GHC == 8.10.*, GHC == 9.0.*
+tested-with: GHC == 7.8.4, GHC == 7.10.3, GHC == 8.0.2, GHC == 8.2.2, GHC == 8.4.4, GHC == 8.6.5, GHC == 8.8.3, GHC == 8.10.*, GHC == 9.0.*, GHC == 9.2.*
              
 library
   exposed-modules:     Unbound.Generics.LocallyNameless
