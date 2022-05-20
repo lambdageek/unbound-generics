@@ -68,6 +68,10 @@ import Control.Monad.Catch (MonadThrow, MonadCatch, MonadMask)
 #if MIN_VERSION_base(4,9,0)
 import qualified Control.Monad.Fail as Fail
 #endif
+#if MIN_VERSION_mtl(2,3,0)
+import Control.Monad (MonadPlus)
+import Control.Monad.Fix (MonadFix)
+#endif
 import Control.Monad.Reader
 import Control.Monad.Identity
 import Control.Applicative (Applicative, Alternative)
