@@ -1,13 +1,18 @@
 name: CI
 
-# Copied from https://github.com/kowainik/.github/blob/master/workflow-templates/ci.yml
+# Copied from https://github.com/kowainik/.github/blob/main/workflow-templates/ci.yml
 # and the blog post https://kodimensional.dev/github-actions by @chshersh
 
 # Trigger the workflow on push or pull request, but only for the master branch
 on:
+  workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened]
   push:
     branches: [master]
+#  schedule:
+#    # additionally run once per week (At 00:00 on Sunday) to maintain cache
+#    - cron: '0 0 * * 0'
 
 jobs:
   cabal:
@@ -17,7 +22,7 @@ jobs:
       matrix:
         # os: [ubuntu-latest, macOS-latest, windows-latest]
         os: [ ubuntu-latest ]
-        cabal: ["3.4"]
+        cabal: ["3.6"]
         ghc:
           - "7.10"
           - "8.0"
@@ -40,7 +45,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-      if: github.event.action == 'opened' || github.event.action == 'synchronize' || github.event.ref == 'refs/heads/master'
 
     - uses: haskell/actions/setup@v1.2
       id: setup-haskell-cabal
@@ -48,6 +52,10 @@ jobs:
       with:
         ghc-version: ${{ matrix.ghc }}
         cabal-version: ${{ matrix.cabal }}
+
+    - name: Configure
+      run: |
+        cabal configure --enable-tests --enable-benchmarks --enable-documentation --test-show-details=direct --write-ghc-environment-files=always
 
     - name: Freeze
       run: |
@@ -65,7 +73,6 @@ jobs:
 
     - name: Build
       run: |
-        cabal configure --enable-tests --enable-benchmarks --test-show-details=direct
         cabal build all
 
     - name: Test
