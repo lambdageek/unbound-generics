@@ -117,7 +117,7 @@
 * Tested with GHC 8.2.2
 * Compile with `-Wcompat`
 * Add `Semigroup` instances for all types that were previously `Monoid` instances
-* Added more examples to the [examples/ directory](https://github.com/lambdageek/unbound-generics/tree/master/examples)
+* Added more examples to the [examples/ directory](https://github.com/lambdageek/unbound-generics/tree/main/examples)
 * Added "exceptions" dependency and `MonadThrow`, `MonadCatch`, `MonadMask` instances for `FreshMT` and `LFreshMT`.
   Thanks Alex McKenna.
 

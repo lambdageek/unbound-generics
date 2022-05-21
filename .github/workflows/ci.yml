@@ -3,13 +3,13 @@ name: CI
 # Copied from https://github.com/kowainik/.github/blob/main/workflow-templates/ci.yml
 # and the blog post https://kodimensional.dev/github-actions by @chshersh
 
-# Trigger the workflow on push or pull request, but only for the master branch
+# Trigger the workflow on push or pull request, but only for the main branch
 on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened]
   push:
-    branches: [master]
+    branches: [main]
 #  schedule:
 #    # additionally run once per week (At 00:00 on Sunday) to maintain cache
 #    - cron: '0 0 * * 0'
