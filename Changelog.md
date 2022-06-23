@@ -6,8 +6,12 @@
   but we don't add a dynamically-typed `substPats` function.
 * Expose `Rec` constructor of the `Rec` type and the `ctxLevel` function from `AlphaCtx`.
 
+# 0.4.2
+
 * Add `Functor` instance for `Unbound.Generics.LocallyNameless.Internal.Iso.Exchange`
   Thanks to Emily Pillmore (emilypi)
+* Import `MonadPlus` and `MonadFix` explicitly when building with mtl-2.3
+* Builds with GHC 9.0, GHC 9.2
 
 # 0.4.1
 
@@ -119,7 +123,7 @@
 * Tested with GHC 8.2.2
 * Compile with `-Wcompat`
 * Add `Semigroup` instances for all types that were previously `Monoid` instances
-* Added more examples to the [examples/ directory](https://github.com/lambdageek/unbound-generics/tree/master/examples)
+* Added more examples to the [examples/ directory](https://github.com/lambdageek/unbound-generics/tree/main/examples)
 * Added "exceptions" dependency and `MonadThrow`, `MonadCatch`, `MonadMask` instances for `FreshMT` and `LFreshMT`.
   Thanks Alex McKenna.
 

@@ -4,7 +4,7 @@
 [![Discord](https://img.shields.io/discord/732650960471720076?logo=discord)](https://discord.gg/CRfu93W)
 
 [![Hackage](https://img.shields.io/hackage/v/unbound-generics.svg)](https://hackage.haskell.org/package/unbound-generics)
-[![CI](https://github.com/lambdageek/unbound-generics/workflows/CI/badge.svg)](https://github.com/lambdageek/unbound-generics/actions?query=workflow%3ACI+branch%3Amaster)
+[![CI](https://github.com/lambdageek/unbound-generics/workflows/CI/badge.svg)](https://github.com/lambdageek/unbound-generics/actions?query=workflow%3ACI+branch%3Amain)
 <!-- [![Build Status](https://travis-ci.org/lambdageek/unbound-generics.svg)](https://travis-ci.org/lambdageek/unbound-generics) -->
 
 Support for programming with names and binders using GHC Generics.
