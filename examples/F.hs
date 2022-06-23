@@ -26,14 +26,14 @@ type TmName = Name Tm
 
 data Ty = TyVar TyName
         | Arr Ty Ty
-        | All (Bind TyName Ty)
+        | All (Bind [TyName] Ty)
    deriving (Show, Generic, Typeable)
 
 data Tm = TmVar TmName
         | Lam (Bind (TmName, Embed Ty) Tm)
-        | TLam (Bind TyName Tm)
+        | TLam (Bind [TyName] Tm)
         | App Tm Tm
-        | TApp Tm Ty
+        | TApp Tm [Ty]
    deriving (Show, Generic, Typeable)
 
 ------------------------------------------------------
@@ -65,20 +65,30 @@ c :: Name Ty
 
 -- /\a. \x:a. x
 polyid :: Tm
-polyid = TLam (bind a (Lam (bind (x, Embed (TyVar a)) (TmVar x))))
+polyid = TLam (bind [a] (Lam (bind (x, Embed (TyVar a)) (TmVar x))))
 
 -- All a. a -> a
 polyidty :: Ty
-polyidty = All (bind a (Arr (TyVar a) (TyVar a)))
+polyidty = All (bind [a] (Arr (TyVar a) (TyVar a)))
 
 -- /\b. \y:b. y
 polyid2 :: Tm
-polyid2 = TLam (bind b (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
+polyid2 = TLam (bind [b] (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
 
 -- /\c. \y:b. y
 bad_polyid2 :: Tm
-bad_polyid2 = TLam (bind c (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
+bad_polyid2 = TLam (bind [c] (Lam (bind (y, Embed (TyVar b)) (TmVar y))))
 
+-- /\a b. a -> b -> a
+const_ty :: Ty 
+const_ty = All (bind [a,b] (Arr (TyVar a) (Arr (TyVar b) (TyVar a))))
+
+-- /\a b. a -> b -> a
+const_tm :: Tm
+const_tm = TLam (bind [a,b] (Lam (bind (x, Embed (TyVar a)) (Lam (bind (y, Embed (TyVar b)) (TmVar x))))))
+
+test :: Ty
+test = fst (runM (ti emptyCtx (TApp const_tm [polyidty, All (bind [c] (TyVar c))])))
 
 -----------------------------------------------------------------
 -- Typechecker
@@ -112,8 +122,8 @@ lookupTmVar g v = do
       Just s -> return s
       Nothing -> throwError "NotFound"
 
-extendTy :: TyName -> Ctx -> Ctx
-extendTy n ctx = ctx { getDelta =  n : (getDelta ctx) }
+extendTy :: [TyName] -> Ctx -> Ctx
+extendTy ns ctx = ctx { getDelta =  ns <> (getDelta ctx) }
 
 extendTm :: TmName -> Ty -> Ctx -> Ctx
 extendTm n ty ctx = ctx { getGamma = (n, ty) : (getGamma ctx) }
@@ -162,9 +172,8 @@ ti g (TApp t ty) = do
   tyt <- ti g t
   case tyt of
    (All bnder) -> do
-      tcty g  ty
-      (n1, ty1) <- unbind bnder
-      return $ subst n1 ty ty1
+      mapM_ (tcty g) ty
+      return $ instantiate bnder ty
    _ -> throwError $ "Expected a ForAll in a type application, got " ++ show tyt
 
 

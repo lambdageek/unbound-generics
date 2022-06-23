@@ -32,6 +32,7 @@ module Unbound.Generics.LocallyNameless.Alpha (
   , incrLevelCtx
   , decrLevelCtx
   , isZeroLevelCtx
+  , ctxLevel
   -- * Internal
   , gaeq
   , gfvAny
