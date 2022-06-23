@@ -11,6 +11,7 @@ import TestRefine
 import TestIgnore
 import TestShiftEmbed
 import TestTH
+import TestSubstBind
 
 main :: IO ()
 main = defaultMain $ testGroup "unboundGenerics"
@@ -24,4 +25,5 @@ main = defaultMain $ testGroup "unboundGenerics"
        , test_acompare
        , test_shiftEmbed
        , test_TH
+       , test_substBind
        ]

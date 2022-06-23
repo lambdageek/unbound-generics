@@ -1,5 +1,12 @@
 # NEXT
 
+* Add `substBind` operation that substitutes for the bound variable of a `Bind (Name a) t` term.
+  This adds a new function `substPat` to the `Subst` class.
+  This is similar to https://github.com/sweirich/replib/commit/98bdb8a2dab991771702597f16d1e1e7fdbd04fe
+  but we don't add a dynamically-typed `substPats` function.
+* Tests for `substBind` by Mark Lemay (marklemay) Thanks!
+* Expose `Rec` constructor of the `Rec` type and the `ctxLevel` function from `AlphaCtx`.
+
 # 0.4.2
 
 * Add `Functor` instance for `Unbound.Generics.LocallyNameless.Internal.Iso.Exchange`
