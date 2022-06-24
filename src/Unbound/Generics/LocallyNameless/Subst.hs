@@ -75,8 +75,12 @@ data SubstCoerce a b where
 -- in a binder, without first naming the variables.
 -- NOTE: this operation does not check that the number of terms passed in
 -- match the number of variables in the pattern. (Or that they are of appropriate type.)
-instantiate :: (Alpha a, Alpha b, Alpha p, Subst a b) => Bind p b -> [a] -> b
-instantiate (B _p t) u = substBvs initialCtx u t
+instantiate :: (Alpha a, Alpha b, Alpha p , Subst a b) => Bind p b -> [a] -> b
+instantiate bnd u = instantiate_ bnd u
+
+-- | A version of 'instantiate' with a more general type
+instantiate_ :: Subst a b => Bind p b -> [a] -> b
+instantiate_ (B _p t) u = substBvs initialCtx u t
 
 
 -- | Instances of @'Subst' b a@ are terms of type @a@ that may contain
@@ -230,5 +234,5 @@ instance Subst a (Ignore b) where
 -- This is a specialization of @'instantiate' :: Bind pat term -> [a] -> term@ where the @'Bind' pat term@ has a pattern that is just
 -- a single @'Name' a@ and there is a single substitution term of type @a@.  Unlike 'instantiate', this function cannot fail at runtime.
 substBind :: Subst a t => Bind (Name a) t -> a -> t
-substBind b u = instantiate b [u]
+substBind b u = instantiate_ b [u]
 
