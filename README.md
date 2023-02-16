@@ -50,18 +50,18 @@ instance Subst Expr Expr where
 
 -- evaluation takes an expression and returns a value while using a source of fresh names
 eval :: Expr -> FreshM Expr
-eval (V x) = fail $ "unbound variable " ++ show x
-eval e@(Lam {}) = return e
+eval (V x) = error $ "unbound variable " ++ show x
+eval e@Lam{} = return e
 eval (App e1 e2) = do
   v1 <- eval e1
   v2 <- eval e2
   case v1 of
-   (Lam bnd) -> do
+   Lam bnd -> do
      -- open the lambda by picking a fresh name for the bound variable x in body
      (x, body) <- unbind bnd
      let body' = subst x v2 body
      eval body'
-   _ -> fail "application of non-lambda"
+   _ -> error "application of non-lambda"
 
 example :: Expr
 example =
