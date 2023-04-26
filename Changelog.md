@@ -6,6 +6,8 @@
   This is a specialization of `instantiate` to the case where the pattern is a single `Name a`
 * Tests for `substBind` by Mark Lemay (marklemay) Thanks!
 * Expose `Rec` constructor of the `Rec` type and the `ctxLevel` function from `AlphaCtx`
+* Require `transformers < 0.6`, run CI with GHC 9.4, drop CI with GHC 7.10.
+  Thanks to Andreas Abel (andreaasabel).
 
 # 0.4.2
 
