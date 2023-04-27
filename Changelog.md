@@ -1,5 +1,7 @@
 # NEXT
 
+# 0.4.3
+
 * Add an `instantiate` function that substitutes a list of terms for a collection of bound variables in a toplevel `Bind p t` term.
   Thanks to Stephanie Weirich (sweirich).  This adds a new `substBvs` function to the `Subst` class.
 * Add `substBind` operation that substitutes for the bound variable of a `Bind (Name a) t` term.
