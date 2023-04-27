@@ -77,10 +77,14 @@ import Control.Monad.Identity
 import Control.Applicative (Applicative, Alternative)
 
 import Control.Monad.Trans.Cont
+#if !MIN_VERSION_transformers(0,6,0)
 import Control.Monad.Trans.Error
+#endif
 import Control.Monad.Trans.Except
 import Control.Monad.Trans.Identity
+#if !MIN_VERSION_transformers(0,6,0)
 import Control.Monad.Trans.List
+#endif
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.State.Lazy as Lazy
 import Control.Monad.Trans.State.Strict as Strict
@@ -164,10 +168,12 @@ instance LFresh m => LFresh (ContT r m) where
   avoid  = mapContT . avoid
   getAvoids = lift getAvoids
 
+#if !MIN_VERSION_transformers(0,6,0)
 instance (Error e, LFresh m) => LFresh (ErrorT e m) where
   lfresh = lift . lfresh
   avoid  = mapErrorT . avoid
   getAvoids = lift getAvoids
+#endif
 
 instance LFresh m => LFresh (ExceptT e m) where
   lfresh = lift . lfresh
@@ -179,10 +185,12 @@ instance LFresh m => LFresh (IdentityT m) where
   avoid  = mapIdentityT . avoid
   getAvoids = lift getAvoids
 
+#if !MIN_VERSION_transformers(0,6,0)
 instance LFresh m => LFresh (ListT m) where
   lfresh = lift . lfresh
   avoid  = mapListT . avoid
   getAvoids = lift getAvoids
+#endif
 
 instance LFresh m => LFresh (MaybeT m) where
   lfresh = lift . lfresh
