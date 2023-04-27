@@ -30,7 +30,9 @@ import Control.Monad.Fix (MonadFix)
 #endif
 import Control.Monad.Trans
 import Control.Monad.Trans.Except
+#if !MIN_VERSION_transformers(0,6,0)
 import Control.Monad.Trans.Error
+#endif
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.State.Lazy as Lazy
@@ -119,8 +121,10 @@ instance Monad m => Fresh (FreshMT m) where
     return $ (Fn s n)
   fresh nm@(Bn {}) = return nm
 
+#if !MIN_VERSION_transformers(0,6,0)
 instance (Error e, Fresh m) => Fresh (ErrorT e m) where
   fresh = lift . fresh
+#endif
 
 instance Fresh m => Fresh (ExceptT e m) where
   fresh = lift . fresh
