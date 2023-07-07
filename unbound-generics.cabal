@@ -44,6 +44,7 @@ library
                        Unbound.Generics.LocallyNameless.Operations
                        Unbound.Generics.LocallyNameless.Unsafe
                        Unbound.Generics.LocallyNameless.Internal.Fold
+                       Unbound.Generics.LocallyNameless.Internal.GSubst
                        Unbound.Generics.LocallyNameless.Internal.Iso
                        Unbound.Generics.LocallyNameless.Internal.Lens
                        Unbound.Generics.LocallyNameless.Rec
