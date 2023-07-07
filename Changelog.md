@@ -1,5 +1,7 @@
 # NEXT
 
+* Move GSubst from `Unbound.Generics.LocallyNameless.Subst` into a separate `Internal` module that is exported. Now users can write their own generic traversals.
+
 # 0.4.3
 
 * Add an `instantiate` function that substitutes a list of terms for a collection of bound variables in a toplevel `Bind p t` term.
