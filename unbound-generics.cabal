@@ -18,7 +18,7 @@ homepage:            http://github.com/lambdageek/unbound-generics
 bug-reports:         http://github.com/lambdageek/unbound-generics/issues
 license:             BSD3
 license-file:        LICENSE
-author:              Aleksey Kliger
+author:              Aleksey Kliger, Austin Erlandson
 maintainer:          aleksey@lambdageek.org
 copyright:           (c) 2014-2022, Aleksey Kliger
 category:            Language
