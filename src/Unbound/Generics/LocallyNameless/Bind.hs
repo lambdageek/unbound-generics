@@ -63,8 +63,9 @@ instance (Alpha p, Alpha t) => Alpha (Bind p t) where
   open ctx b (B p t) =
     B (open (patternCtx ctx) b p) (open (incrLevelCtx ctx) b t)
 
-  nthPatFind b = error $ "Binding " ++ show b ++ " used as a pattern"
-  namePatFind b = error $ "Binding " ++ show b ++ " used as a pattern"
+  nthPatFind _ = error "Binding used as a pattern"
+  
+  namePatFind _ = error "Binding used as a pattern"
 
   swaps' ctx perm (B p t) =
     B (swaps' (patternCtx ctx) perm p)
