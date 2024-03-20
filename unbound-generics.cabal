@@ -58,7 +58,7 @@ library
                        mtl >= 2.1,
                        transformers >= 0.3 && < 0.7,
                        transformers-compat >= 0.3,
-                       containers >= 0.5 && < 0.7,
+                       containers >= 0.5 && < 0.8,
                        contravariant >= 0.5,
                        profunctors >= 4.0,
                        ansi-wl-pprint >= 0.6.7.2 && < 1.1,
