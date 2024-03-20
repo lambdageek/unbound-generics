@@ -1,5 +1,10 @@
 # NEXT
 
+* Add `Alpha` and `Subst` instances for `NonEmpty`.  Thanks Brent Yorgey (byorgey)
+* Add GHC 9.8 to CI matrix
+* Bump base >= 4.9
+* Remove `tested-with: 7.x` in `unbound-generics.cabal`. We removed CI testing with GHC 7.x last year.
+
 # 0.4.3
 
 * Add an `instantiate` function that substitutes a list of terms for a collection of bound variables in a toplevel `Bind p t` term.
