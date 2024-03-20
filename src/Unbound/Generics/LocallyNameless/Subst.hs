@@ -53,6 +53,7 @@ module Unbound.Generics.LocallyNameless.Subst (
 import GHC.Generics
 
 import Data.List (find)
+import Data.List.NonEmpty (NonEmpty)
 
 import Unbound.Generics.LocallyNameless.Name
 import Unbound.Generics.LocallyNameless.Alpha
@@ -195,6 +196,7 @@ instance (Subst c a, Subst c b, Subst c d, Subst c e) => Subst c (a,b,d,e)
 instance (Subst c a, Subst c b, Subst c d, Subst c e, Subst c f) =>
    Subst c (a,b,d,e,f)
 instance (Subst c a) => Subst c [a]
+instance (Subst c a) => Subst c (NonEmpty a)
 instance (Subst c a) => Subst c (Maybe a)
 instance (Subst c a, Subst c b) => Subst c (Either a b)
 
