@@ -1,6 +1,11 @@
 # NEXT
 
+* Add `Alpha` and `Subst` instances for `NonEmpty`.  Thanks Brent Yorgey (byorgey)
+* Add GHC 9.8 to CI matrix
+* Bump base >= 4.9
+* Remove `tested-with: 7.x` in `unbound-generics.cabal`. We removed CI testing with GHC 7.x last year.
 * Move GSubst from `Unbound.Generics.LocallyNameless.Subst` into a separate `Internal` module that is exported. Now users can write their own generic traversals.
+  Thanks Bohdan Liesnikov (liesnikov)
 
 # 0.4.3
 

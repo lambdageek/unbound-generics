@@ -60,6 +60,7 @@ import Data.Function (on)
 import Data.Functor.Contravariant (Contravariant(..))
 import Data.Foldable (Foldable(..))
 import Data.List (intersect)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Monoid (Monoid(..), All(..))
 import Data.Ratio (Ratio)
 import Data.Semigroup as Sem
@@ -687,6 +688,7 @@ instance Alpha Bool
 
 instance Alpha a => Alpha (Maybe a)
 instance Alpha a => Alpha [a]
+instance Alpha a => Alpha (NonEmpty a)
 instance Alpha ()
 instance (Alpha a,Alpha b) => Alpha (Either a b)
 instance (Alpha a,Alpha b) => Alpha (a,b)
