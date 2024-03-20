@@ -63,13 +63,14 @@ import Unbound.Generics.LocallyNameless.Ignore
 import Unbound.Generics.LocallyNameless.Bind
 import Unbound.Generics.LocallyNameless.Rebind
 import Unbound.Generics.LocallyNameless.Rec
+import Unbound.Generics.LocallyNameless.Internal.GSubst
 
 -- | See 'isVar'
 data SubstName a b where
   SubstName :: (a ~ b) => Name a -> SubstName a b
 
--- | See 'isCoerceVar'  
-data SubstCoerce a b where  
+-- | See 'isCoerceVar'
+data SubstCoerce a b where
   SubstCoerce :: Name b -> (b -> Maybe a) -> SubstCoerce a b
 
 -- | Immediately substitute for the bound variables of a pattern
@@ -92,7 +93,7 @@ class Subst b a where
   isvar :: a -> Maybe (SubstName a b)
   isvar _ = Nothing
 
-  -- | This is an alternative version to 'isvar', useable in the case 
+  -- | This is an alternative version to 'isvar', useable in the case
   --   that the substituted argument doesn't have *exactly* the same type
   --   as the term it should be substituted into.
   --   The default implementation always returns 'Nothing'.
@@ -118,7 +119,7 @@ class Subst b a where
     | all (isFreeName . fst) ss =
       case (isvar x :: Maybe (SubstName a b)) of
         Just (SubstName m) | Just (_, u) <- find ((==m) . fst) ss -> u
-        _ -> case isCoerceVar x :: Maybe (SubstCoerce a b) of 
+        _ -> case isCoerceVar x :: Maybe (SubstCoerce a b) of
             Just (SubstCoerce m f) | Just (_, u) <- find ((==m) . fst) ss -> maybe x id (f u)
             _ -> to $ gsubsts ss (from x)
     | otherwise =
@@ -135,47 +136,10 @@ class Subst b a where
         Just (SubstName (Bn j k)) | ctxLevel ctx == j, fromInteger k < length bs -> bs !! fromInteger k
         _ -> to $ gsubstBvs ctx bs (from x)
 
----- generic structural substitution.
-
-class GSubst b f where
-  gsubst :: Name b -> b -> f c -> f c
-  gsubsts :: [(Name b, b)] -> f c -> f c
-  gsubstBvs :: AlphaCtx -> [b] -> f c -> f c
-
 instance Subst b c => GSubst b (K1 i c) where
   gsubst nm val = K1 . subst nm val . unK1
   gsubsts ss = K1 . substs ss . unK1
   gsubstBvs ctx b = K1 . substBvs ctx b . unK1
-
-instance GSubst b f => GSubst b (M1 i c f) where
-  gsubst nm val = M1 . gsubst nm val . unM1
-  gsubsts ss = M1 . gsubsts ss . unM1
-  gsubstBvs c b = M1 . gsubstBvs c b . unM1
-
-instance GSubst b U1 where
-  gsubst _nm _val _ = U1
-  gsubsts _ss _ = U1
-  gsubstBvs _c _b _ = U1
-
-instance GSubst b V1 where
-  gsubst _nm _val = id
-  gsubsts _ss = id
-  gsubstBvs _c _b = id
-
-instance (GSubst b f, GSubst b g) => GSubst b (f :*: g) where
-  gsubst nm val (f :*: g) = gsubst nm val f :*: gsubst nm val g
-  gsubsts ss (f :*: g) = gsubsts ss f :*: gsubsts ss g
-  gsubstBvs c b (f :*: g) = gsubstBvs c b f :*: gsubstBvs c b g
-
-instance (GSubst b f, GSubst b g) => GSubst b (f :+: g) where
-  gsubst nm val (L1 f) = L1 $ gsubst nm val f
-  gsubst nm val (R1 g) = R1 $ gsubst nm val g
-
-  gsubsts ss (L1 f) = L1 $ gsubsts ss f
-  gsubsts ss (R1 g) = R1 $ gsubsts ss g
-
-  gsubstBvs c b (L1 f) = L1 $ gsubstBvs c b f
-  gsubstBvs c b (R1 g) = R1 $ gsubstBvs c b g
 
 -- these have a Generic instance, but
 -- it's self-refential (ie: Rep Int = D1 (C1 (S1 (Rec0 Int))))
@@ -187,7 +151,7 @@ instance Subst b Char where subst _ _ = id ; substs _ = id ; substBvs _ _ = id
 instance Subst b Float where subst _ _ = id ; substs _ = id ; substBvs _ _ = id
 instance Subst b Double where subst _ _ = id ; substs _ = id ; substBvs _ _ = id
 
--- huh, apparently there's no instance Generic Integer. 
+-- huh, apparently there's no instance Generic Integer.
 instance Subst b Integer where subst _ _ = id ; substs _ = id ; substBvs _ _ = id
 
 instance (Subst c a, Subst c b) => Subst c (a,b)
