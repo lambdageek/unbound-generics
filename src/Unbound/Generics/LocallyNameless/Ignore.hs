@@ -32,7 +32,7 @@ instance (Show t) => Show (Ignore t) where
                               . showsPrec prec t
                               . showString "->")
 
-instance (Show t) => Alpha (Ignore t) where
+instance Alpha (Ignore t) where
     aeq' _ _ _ = True
     fvAny' _ _ = pure
     isPat _ = inconsistentDisjointSet
