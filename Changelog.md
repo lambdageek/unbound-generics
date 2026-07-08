@@ -1,5 +1,10 @@
 # NEXT
 
+# 0.4.5
+
+* Bump `containers` and `ansi-wl-pprint` upper bounds
+* Add more recent GHCs to CI matrix
+
 # 0.4.4
 
 * Add `Alpha` and `Subst` instances for `NonEmpty`.  Thanks Brent Yorgey (byorgey)
