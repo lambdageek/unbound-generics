@@ -124,5 +124,5 @@ Benchmark benchmark-unbound-generics
 
 source-repository head
   type:                git
-  location:            git://github.com/lambdageek/unbound-generics.git
+  location:            https://github.com/lambdageek/unbound-generics.git
 
