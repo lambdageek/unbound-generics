@@ -160,7 +160,7 @@ isNullDisjointSet _ = False
 --
 -- Minimal instance is entirely empty, provided that your type is an instance of
 -- 'Generic'.
-class (Show a) => Alpha a where
+class Alpha a where
   -- | See 'Unbound.Generics.LocallyNameless.Operations.aeq'.
   aeq' :: AlphaCtx -> a -> a -> Bool
   default aeq' :: (Generic a, GAlpha (Rep a)) => AlphaCtx -> a -> a -> Bool
